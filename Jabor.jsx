@@ -516,9 +516,19 @@ export default function UrbanPatch() {
     try {
       const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
       const data = await res.json();
+      
+      const rawDistrict = (data.principalSubdivision || data.city || "").toLowerCase();
+      let matchedDistrict = "";
+      if (rawDistrict && districts.length > 0) {
+        matchedDistrict = districts.find(d => 
+          rawDistrict.includes(d.toLowerCase()) || 
+          d.toLowerCase().includes(rawDistrict.replace(' district', '').trim())
+        ) || "";
+      }
+
       setForm(prev => ({
         ...prev,
-        district: data.principalSubdivision || data.city || prev.district,
+        district: matchedDistrict || prev.district,
         area: data.locality || data.subLocality || prev.area
       }));
     } catch (e) {

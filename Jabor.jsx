@@ -7,6 +7,17 @@ import { useState, useEffect, useRef } from "react";
 // Importing required libraries/components
 import "./style.css";
 
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
+import L from "leaflet";
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
+
 const SUPA_URL = "https://fgbcfhlrdyexsdbldcmn.supabase.co";
 const KEY      = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYmNmaGxyZHlleHNkYmxkY21uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MjA3NDQsImV4cCI6MjA5MTQ5Njc0NH0.2n3g-F-VBpsKNY0QUc7JdheMaIwf5ln6qiFyEakBW80";
 const H        = { apikey: KEY, Authorization: `Bearer ${KEY}` };
@@ -495,7 +506,74 @@ export default function UrbanPatch() {
   const [submitted, setSubmitted] = useState(false);
   const [preview, setPreview] = useState(null);
   const [loadingPrev, setLoadingPrev] = useState(false);
+
+  const [position, setPosition] = useState(null);
+  const [loadingLoc, setLoadingLoc] = useState(false);
+
   const fileRef = useRef(null);
+
+  const reverseGeocode = async (lat, lng) => {
+    try {
+      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+      const data = await res.json();
+      setForm(prev => ({
+        ...prev,
+        district: data.principalSubdivision || data.city || prev.district,
+        area: data.locality || data.subLocality || prev.area
+      }));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleGetLocation = (e) => {
+    e.preventDefault();
+    if (!navigator.geolocation) return alert("Geolocation not supported");
+    setLoadingLoc(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setPosition([latitude, longitude]);
+        reverseGeocode(latitude, longitude);
+        setLoadingLoc(false);
+      },
+      (err) => {
+        alert("Location access denied or failed.");
+        setLoadingLoc(false);
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  function DraggableMarker() {
+    const map = useMap();
+    const markerRef = useRef(null);
+    useEffect(() => { if (position) map.flyTo(position, 15); }, [position, map]);
+    
+    useMapEvents({
+      click(e) {
+        const newPos = [e.latlng.lat, e.latlng.lng];
+        setPosition(newPos);
+        reverseGeocode(newPos[0], newPos[1]);
+      }
+    });
+
+    const eventHandlers = {
+      dragend() {
+        const marker = markerRef.current;
+        if (marker != null) {
+          const newPos = [marker.getLatLng().lat, marker.getLatLng().lng];
+          setPosition(newPos);
+          reverseGeocode(newPos[0], newPos[1]);
+        }
+      },
+    };
+
+    return position === null ? null : (
+      <Marker draggable={true} eventHandlers={eventHandlers} position={position} ref={markerRef} />
+    );
+  }
+
 
   useEffect(() => {
     db.getReports().then(d => { setReports(d || []); setLoadingRep(false); });
@@ -699,6 +777,22 @@ export default function UrbanPatch() {
 
             <div className="card" style={{ marginBottom: 24 }}>
               <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 20 }}>2. Location Details <span style={{ color: "var(--danger)" }}>*</span></div>
+
+              <div style={{ marginBottom: 16 }}>
+                <button className="btn-primary" style={{ width: "100%", padding: "12px", fontSize: 14, background: "var(--bg-main)", color: "var(--accent-primary)", border: "1px solid var(--accent-primary)", boxShadow: "none" }} onClick={handleGetLocation} disabled={loadingLoc}>
+                  {loadingLoc ? "📍 Locating..." : "📍 Use Current Location"}
+                </button>
+              </div>
+
+              {position && (
+                <div style={{ height: 300, width: "100%", borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-color)", marginBottom: 20 }}>
+                  <MapContainer center={position} zoom={15} scrollWheelZoom={true} style={{ height: "100%", width: "100%", zIndex: 10 }}>
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap contributors' />
+                    <DraggableMarker />
+                  </MapContainer>
+                </div>
+              )}
+
               <div className="form-group">
                 <label className="inp-label">DISTRICT</label>
                 {loadingMlas ? <div style={{ color: "var(--text-secondary)", fontSize: 14 }}>Loading...</div> : 

@@ -850,7 +850,7 @@ export default function UrbanPatch() {
                       <div className="acc-grid">
                         {[
                           { role: "MLA", name: preview.mla?.name, sub: form.constituency, party: preview.mla?.party },
-                          { role: "MP",  name: preview.mp?.name || "—", sub: `${preview.lok_sabha_seat} Lok Sabha`, party: preview.mp?.party },
+                          { role: "MP",  name: preview.mp?.name || "—", sub: `${form.constituency} Lok Sabha`, party: preview.mp?.party },
                         ].map(p => (
                           <div key={p.role} style={{ padding: 12, background: "var(--bg-surface)", borderRadius: 8, boxShadow: "var(--shadow-sm)" }}>
                             <div style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 700, marginBottom: 4 }}>{p.role}</div>

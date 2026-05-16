@@ -346,12 +346,12 @@ function ReportCard({ r, expanded, onClick }) {
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-main)", padding: "4px 8px", borderRadius: 6 }}>
             <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 600 }}>MLA:</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{r.mla}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{r.mla_name}</span>
             <Badge party={r.mla_party} />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-main)", padding: "4px 8px", borderRadius: 6 }}>
             <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 600 }}>MP:</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{r.mp}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{r.mp_name}</span>
             <Badge party={r.mp_party} />
           </div>
         </div>
@@ -365,15 +365,15 @@ function ShameBoard({ reports }) {
   const [tab, setTab] = useState("mla");
   const mlaMap = {};
   reports.forEach(r => {
-    const k = `${r.mla}||${r.mla_party}||${r.constituency}||${r.district}`;
-    if (!mlaMap[k]) mlaMap[k] = { name: r.mla, party: r.mla_party, constituency: r.constituency, district: r.district, count: 0, latest: r.created_at };
+    const k = `${r.mla_name}||${r.mla_party}||${r.constituency}||${r.district}`;
+    if (!mlaMap[k]) mlaMap[k] = { name: r.mla_name, party: r.mla_party, constituency: r.constituency, district: r.district, count: 0, latest: r.created_at };
     mlaMap[k].count++;
     if (new Date(r.created_at) > new Date(mlaMap[k].latest)) mlaMap[k].latest = r.created_at;
   });
   const mpMap = {};
   reports.forEach(r => {
-    const k = `${r.mp}||${r.mp_party}||${r.lok_sabha_seat}`;
-    if (!mpMap[k]) mpMap[k] = { name: r.mp, party: r.mp_party, seat: r.lok_sabha_seat, count: 0, areas: new Set(), latest: r.created_at };
+    const k = `${r.mp_name}||${r.mp_party}||${r.lok_sabha_seat}`;
+    if (!mpMap[k]) mpMap[k] = { name: r.mp_name, party: r.mp_party, seat: r.lok_sabha_seat, count: 0, areas: new Set(), latest: r.created_at };
     mpMap[k].count++;
     mpMap[k].areas.add(r.constituency);
     if (new Date(r.created_at) > new Date(mpMap[k].latest)) mpMap[k].latest = r.created_at;
@@ -384,11 +384,11 @@ function ShameBoard({ reports }) {
   const mlaReports = {};
   const mpReports = {};
   reports.forEach(r => {
-    const mk = `${r.mla}||${r.mla_party}||${r.constituency}||${r.district}`;
+    const mk = `${r.mla_name}||${r.mla_party}||${r.constituency}||${r.district}`;
     if (!mlaReports[mk]) mlaReports[mk] = [];
     mlaReports[mk].push(r);
     
-    const pk = `${r.mp}||${r.mp_party}||${r.lok_sabha_seat}`;
+    const pk = `${r.mp_name}||${r.mp_party}||${r.lok_sabha_seat}`;
     if (!mpReports[pk]) mpReports[pk] = [];
     mpReports[pk].push(r);
   });

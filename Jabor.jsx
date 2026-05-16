@@ -600,7 +600,7 @@ export default function UrbanPatch() {
     db.getMla(form.constituency).then(mla => {
       if (!mla) { setPreview(null); setLoadingPrev(false); return; }
       db.getMp(mla.lok_sabha_seat).then(mp => {
-        setPreview({ mla: { name: mla.mla_name, party: mla.party }, mp: { name: mp?.mp_name, party: mp?.party } });
+        setPreview({ mla: { name: mla.name, party: mla.party }, mp: { name: mp?.name, party: mp?.party } });
         setLoadingPrev(false);
       });
     });

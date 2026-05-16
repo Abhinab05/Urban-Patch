@@ -949,8 +949,8 @@ export default function UrbanPatch() {
                 <div style={{ fontSize: 11, color: "var(--accent-primary)", fontWeight: 800, letterSpacing: ".05em", marginBottom: 16 }}>TAGGED OFFICIALS</div>
                 <div className="acc-grid">
                   {[
-                    { role: "MLA", name: selReport.mla, sub: selReport.constituency, party: selReport.mla_party },
-                    { role: "MP",  name: selReport.mp,  sub: `${selReport.mp_name} Lok Sabha`, party: selReport.mp_party },
+                    { role: "MLA", name: selReport.mla, sub: selReport.mla_name, party: selReport.mla_party },
+                    { role: "MP",  name: selReport.mp,  sub: selReport.mp_name , party: selReport.mp_party },
                   ].map(p => (
                     <div key={p.role} style={{ background: "var(--bg-surface)", padding: 16, borderRadius: 8, boxShadow: "var(--shadow-sm)" }}>
                       <div style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 700, marginBottom: 4 }}>{p.role}</div>

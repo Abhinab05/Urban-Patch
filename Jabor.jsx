@@ -548,10 +548,11 @@ export default function UrbanPatch() {
         setLoadingLoc(false);
       },
       (err) => {
-        alert("Location access denied or failed.");
+        console.error("Geolocation error:", err);
+        alert(`Location failed: ${err.message || "Unknown error"}. Please ensure Location is enabled in your phone settings and browser permissions.`);
         setLoadingLoc(false);
       },
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
     );
   };
 

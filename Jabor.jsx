@@ -619,8 +619,9 @@ export default function UrbanPatch() {
     setSubmitting(true); setSubmitStep("saving");
     const r = await db.insertReport({
       district: form.district, constituency: form.constituency, area: form.area, landmark: form.landmark,
-      waste_type: form.waste_type, description: form.description, mla: preview?.mla?.name, mla_party: preview?.mla?.party,
-      mp: preview?.mp?.name, mp_party: preview?.mp?.party, lok_sabha_seat: mlas.find(m => m.constituency === form.constituency)?.lok_sabha_seat
+      waste_type: form.waste_type, description: form.description,
+      lok_sabha_seat: mlas.find(m => m.constituency === form.constituency)?.lok_sabha_seat,
+      lat: position?.[0] || null, lng: position?.[1] || null
     });
     if (r) {
       setSubmitStep("uploading");

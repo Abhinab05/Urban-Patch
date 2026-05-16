@@ -67,12 +67,12 @@ const db = {
       return res.ok ? d[0] : null;
     } catch { return null; }
   },
-  async uploadPhoto(file, reportId) {
+  async uploadPhoto(file) {
     try {
       const mimeToExt = { "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "jpg", "image/heif": "jpg" };
       const ext  = mimeToExt[file.type?.toLowerCase()] || (file.name?.includes(".") ? file.name.split(".").pop().toLowerCase() : "jpg");
       const mime = file.type || "image/jpeg";
-      const path = `reports/${reportId}_${Date.now()}.${ext}`;
+      const path = `reports/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
       const res = await fetch(`${SUPA_URL}/storage/v1/object/garbage-photos/${path}`, {
         method: "POST",
         headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": mime, "cache-control": "3600", "x-upsert": "true" },
@@ -616,17 +616,26 @@ export default function UrbanPatch() {
 
   const onSubmit = async () => {
     if (!form.district || !form.constituency || !form.area || !form.photoFile) return alert("Please fill required fields and add a photo.");
-    setSubmitting(true); setSubmitStep("saving");
+    setSubmitting(true); 
+    
+    setSubmitStep("uploading");
+    const url = await db.uploadPhoto(form.photoFile);
+    if (!url) {
+      alert("Error uploading photo. Please try again.");
+      setSubmitting(false);
+      return;
+    }
+
+    setSubmitStep("saving");
     const r = await db.insertReport({
       district: form.district, constituency: form.constituency, area: form.area, landmark: form.landmark,
       waste_type: form.waste_type, description: form.description,
       lok_sabha_seat: mlas.find(m => m.constituency === form.constituency)?.lok_sabha_seat,
-      lat: position?.[0] || null, lng: position?.[1] || null
+      lat: position?.[0] || null, lng: position?.[1] || null,
+      photo_url: url
     });
+    
     if (r) {
-      setSubmitStep("uploading");
-      const url = await db.uploadPhoto(form.photoFile, r.id);
-      if (url) await db.patchPhoto(r.id, url);
       setSubmitted(true);
       db.getReports().then(d => setReports(d || []));
       setForm({ district: "", constituency: "", area: "", landmark: "", waste_type: "mixed", description: "", photoPreview: null, photoFile: null });

@@ -485,7 +485,27 @@ ul, li { margin: 0; padding: 0; list-style: none; }
   }
 }
 
-/* Mobile Responsiveness */
+/* Responsive Breakpoints */
+
+/* Tablet & Mobile (max-width: 1023px) */
+@media (max-width: 1023px) {
+  .dash-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+/* Tablet Only (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .main-content {
+    padding: 20px 24px;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Mobile Responsiveness (max-width: 767px) */
 @media (max-width: 767px) {
   .main-content {
     padding: 16px 12px;
@@ -535,8 +555,30 @@ ul, li { margin: 0; padding: 0; list-style: none; }
     align-items: flex-end;
   }
   .modal-content {
-    padding: 20px;
-    border-radius: 16px 16px 0 0;
-    max-height: 85vh;
+    padding: 24px 20px;
+    border-radius: 20px 20px 0 0;
+    max-height: 90vh;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+  }
+  .btn-primary, .btn-secondary {
+    width: 100%;
+    padding: 14px 24px;
+  }
+  .hero-section .btn-primary, 
+  .hero-section .btn-secondary {
+    width: 100%;
+  }
+  .hero-section > div {
+    flex-direction: column;
+  }
+}
+
+/* Small Mobile Devices (max-width: 400px) */
+@media (max-width: 400px) {
+  .hero-title {
+    font-size: 28px;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr;
   }
 }

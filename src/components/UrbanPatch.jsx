@@ -22,7 +22,7 @@ const LOGO     = "/urban-patch-logo-2.svg";
 const ADMIN_PIN = "2580"; // Change this to your preferred PIN
 
 // ── Assam map base64 src (truncated for readability, kept same as original)
-const ASSAM_MAP_SRC = null; // Will use inline SVG fallback
+const ASSAM_MAP_SRC = ""data:image/png";
 
 // ── Anonymous username generator ──────────────────────────────────────────
 const ADJECTIVES = [
@@ -146,6 +146,15 @@ const db = {
       return `${SUPA_URL}/storage/v1/object/public/garbage-photos/${path}`;
     } catch (e) { console.error("Photo upload error:", e); return null; }
   },
+  async deleteReport(id) {
+    try {
+      const res = await fetch(`${SUPA_URL}/rest/v1/reports?id=eq.${id}`, {
+        method: "DELETE",
+        headers: H
+      });
+      return res.ok;
+    } catch { return false; }
+  }
 };
 
 // ── Constants ────────────────────────────────────────────────────────────
@@ -246,6 +255,7 @@ function AssamMap({ reports }) {
       <svg viewBox="0 0 100 50" style={{ width: "100%", height: "100%", transform: `scale(${zoom}) translate(${pan.x/10}px,${pan.y/10}px)`, transformOrigin: "center center", transition: dragging ? "none" : "transform 0.1s" }} preserveAspectRatio="xMidYMid meet">
         <rect width={100} height={50} fill="#dbeafe" opacity={0.3} rx={2}/>
         <text x={50} y={25} textAnchor="middle" fontSize={6} fill="#94a3b8" fontWeight={700} opacity={0.5}>ASSAM</text>
+        <image href={ASSAM_MAP_SRC} width="100" height="50" opacity="0.3" preserveAspectRatio="none"/>
         {gps.map((r, i) => {
           const cx = tx(r.lng), cy = ty(r.lat);
           const w = WASTE.find(t => t.id === r.waste_type), col = w?.color || "#EF4444";
@@ -707,8 +717,8 @@ export default function UrbanPatch() {
 
   // ── Navigation & views
   const [view, setView]           = useState("dashboard");
-  const [showAnalytics, setShowAnalytics] = useState(false);
   const [showPinModal, setShowPinModal]   = useState(false);
+  const [isAdmin, setIsAdmin]     = useState(false);
 
   // ── Data
   const [selReport, setSelReport] = useState(null);
@@ -868,7 +878,7 @@ export default function UrbanPatch() {
       {/* Admin PIN Modal */}
       {showPinModal && (
         <AdminPinModal
-          onSuccess={() => { setShowPinModal(false); setShowAnalytics(true); setView("analytics"); }}
+          onSuccess={() => { setShowPinModal(false); setIsAdmin(true); alert("Admin Mode Unlocked!"); }}
           onCancel={() => setShowPinModal(false)}
         />
       )}
@@ -892,14 +902,21 @@ export default function UrbanPatch() {
           ))}
           <button
             className={`nav-item ${view === "analytics" ? "active" : ""}`}
-            onClick={() => {
-              if (showAnalytics) { setView("analytics"); }
-              else { setShowPinModal(true); }
-            }}
-            title="Admin Analytics"
+            onClick={() => { setView("analytics"); setSubmitted(false); }}
+            title="Community Analytics"
           >
-            🔐 <span className="hide-mobile">Analytics</span>
+            📊 <span className="hide-mobile">Analytics</span>
           </button>
+          {!isAdmin && (
+            <button className="nav-item" onClick={() => setShowPinModal(true)} title="Admin Access">
+              🔐
+            </button>
+          )}
+          {isAdmin && (
+            <button className="nav-item active" style={{ color: "var(--danger)" }} onClick={() => setIsAdmin(false)} title="Exit Admin">
+              🚪
+            </button>
+          )}
         </div>
         {/* User alias chip */}
         <div className="user-chip" title={`Your anonymous identity: ${currentUser.alias}`}>
@@ -1195,7 +1212,7 @@ export default function UrbanPatch() {
         )}
 
         {/* ── ANALYTICS ── */}
-        {view === "analytics" && showAnalytics && (
+        {view === "analytics" && (
           <AnalyticsDashboard reports={reports} />
         )}
 
@@ -1273,6 +1290,7 @@ export default function UrbanPatch() {
                         else alert("Failed to update status");
                       }}
                       style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 13, fontWeight: 700, color: getStatusColor(selReport.status), background: "var(--bg-surface)", cursor: "pointer" }}
+                      disabled={!isAdmin && selReport.reporter_id !== currentUser.id}
                     >
                       <option value="open">OPEN</option>
                       <option value="working on it">WORKING ON IT</option>
@@ -1282,6 +1300,24 @@ export default function UrbanPatch() {
                   </div>
                   <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>Reported <TimeAgo date={selReport.created_at} /></span>
                 </div>
+
+                {/* Admin Actions */}
+                {isAdmin && (
+                  <button
+                    onClick={async () => {
+                      if (window.confirm("Are you sure you want to permanently delete this report?")) {
+                        const ok = await db.deleteReport(selReport.id);
+                        if (ok) {
+                          setReports(prev => prev.filter(r => r.id !== selReport.id));
+                          setSelReport(null);
+                        } else alert("Failed to delete report. Ensure Row Level Security allows deletes.");
+                      }
+                    }}
+                    style={{ background: "#fef2f2", color: "var(--danger)", border: "1px solid #fca5a5", padding: "8px", borderRadius: "8px", fontWeight: "700", cursor: "pointer", marginTop: "12px" }}
+                  >
+                    🗑️ Delete Report (Admin)
+                  </button>
+                )}
 
                 {/* Share */}
                 <button

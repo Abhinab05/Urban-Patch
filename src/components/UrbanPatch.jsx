@@ -262,6 +262,76 @@ function AssamMap({ reports }) {
 
 
 
+function ReportCard({ r, expanded, onClick, onUpvote, voted }) {
+  const w = WASTE.find(t => t.id === r.waste_type) || WASTE[0];
+  const isHighPriority = (r.upvotes || 0) >= 10;
+
+  return (
+    <div className="report-item" onClick={onClick}>
+      {r.photo_url ? (
+        <img src={r.photo_url} alt="report" className="report-thumb" />
+      ) : (
+        <div className="report-icon-thumb" style={{ background: w.color + "15", color: w.color, border: `1px solid ${w.color}30` }}>
+          {w.icon}
+        </div>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+          <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-primary)" }}>{r.constituency}</span>
+          <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>• {r.district}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: getStatusColor(r.status) + "20", color: getStatusColor(r.status) }}>
+            {(r.status || "OPEN").toUpperCase()}
+          </span>
+          {isHighPriority && <span className="priority-badge">🔥 HIGH PRIORITY</span>}
+          <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}><TimeAgo date={r.created_at} /></span>
+        </div>
+        {(r.area || r.landmark) && (
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            📍 {[r.area, r.landmark].filter(Boolean).join(" • ")}
+          </p>
+        )}
+        {r.reporter_alias && (
+          <div className="reporter-line">
+            <span>👤 Reported by</span>
+            <span className="reporter-alias">{r.reporter_alias}</span>
+          </div>
+        )}
+        <p style={{
+          fontSize: 14, color: "var(--text-primary)", marginBottom: 10, marginTop: 6, lineHeight: 1.5,
+          overflow: "hidden", display: "-webkit-box", WebkitLineClamp: expanded ? "unset" : 2,
+          WebkitBoxOrient: "vertical", wordBreak: "break-word",
+        }}>{r.description}</p>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-main)", padding: "4px 8px", borderRadius: 6 }}>
+              <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 600 }}>MLA:</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{r.mla_name}</span>
+              <Badge party={r.mla_party} />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-main)", padding: "4px 8px", borderRadius: 6 }}>
+              <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 600 }}>MP:</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{r.mp_name}</span>
+              <Badge party={r.mp_party} />
+            </div>
+          </div>
+          <button
+            className={`upvote-btn ${voted ? "voted" : ""}`}
+            onClick={e => { e.stopPropagation(); onUpvote && onUpvote(r.id); }}
+            title={voted ? "You've already flagged this" : "I see this issue too"}
+          >
+            <span className="eye">👀</span>
+            {voted ? "Flagged" : "I see this too"} · {r.upvotes || 0}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Shame Board ───────────────────────────────────────────────────────────
+
+
 function ShameBoard({ reports }) {
   const [tab, setTab] = useState("mla");
   const medals = ["🥇", "🥈", "🥉"];

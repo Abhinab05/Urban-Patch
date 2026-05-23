@@ -1399,3 +1399,88 @@ ul, li { margin: 0; padding: 0; list-style: none; }
   position: relative;
   z-index: 10;
 }
+
+
+/* =========================================================================
+   Mobile UI Optimizations
+   ========================================================================= */
+
+/* Bottom Navigation for Mobile */
+.bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-color);
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.bottom-nav-inner {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 60px;
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 11px;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  cursor: pointer;
+}
+
+.bottom-nav-item.active {
+  color: var(--accent-primary);
+}
+
+.bottom-nav-item span:first-child {
+  font-size: 20px;
+}
+
+@media (max-width: 600px) {
+  .bottom-nav {
+    display: block;
+  }
+  
+  .top-nav .nav-links {
+    display: none; /* Hide top nav links on mobile */
+  }
+
+  .app-container {
+    padding-bottom: 80px; /* Space for bottom nav */
+  }
+
+  /* Make ReportCards stacked on mobile */
+  .report-item {
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    gap: 0;
+  }
+
+  .report-item .report-thumb {
+    width: 100% !important;
+    height: 200px !important;
+    border-radius: 0 !important;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .report-item > div:last-child {
+    padding: 16px;
+  }
+}

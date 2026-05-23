@@ -135,6 +135,34 @@ const db = {
       return pRes.ok;
     } catch { return false; }
   },
+
+  async compressImage(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 800;
+          let width = img.width;
+          let height = img.height;
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => resolve(blob), "image/webp", 0.8);
+        };
+        img.onerror = (error) => reject(error);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  },
   async uploadPhoto(file) {
     try {
       const mimeToExt = { "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "jpg", "image/heif": "jpg" };
@@ -407,7 +435,7 @@ function ReportCard({ r, expanded, onClick, onUpvote, voted }) {
   return (
     <div className="report-item stylish-card" onClick={onClick}>
       {r.photo_url ? (
-        <img src={r.photo_url} alt="report" className="report-thumb" style={{ width: 140, height: 140, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
+        <img src={r.photo_url} alt="report" className="report-thumb" loading="lazy" style={{ width: 140, height: 140, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
       ) : (
         <div className="report-icon-thumb" style={{ background: w.color + "15", color: w.color, border: `1px solid ${w.color}30` }}>
           {w.icon}
@@ -1668,6 +1696,29 @@ export default function UrbanPatch() {
           </div>
         )}
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <div className="bottom-nav">
+        <div className="bottom-nav-inner">
+          {NAV.map(n => (
+            <button
+              key={`bottom-${n.id}`}
+              className={`bottom-nav-item ${view === n.id ? "active" : ""}`}
+              onClick={() => { setView(n.id); setSubmitted(false); }}
+            >
+              <span>{n.icon}</span>
+              <span>{n.label}</span>
+            </button>
+          ))}
+          <button
+            className={`bottom-nav-item ${view === "analytics" ? "active" : ""}`}
+            onClick={() => { setView("analytics"); setSubmitted(false); }}
+          >
+            <span>📈</span>
+            <span>Analytics</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

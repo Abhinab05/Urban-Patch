@@ -5,15 +5,6 @@
 import { useState, useEffect, useRef } from "react";
 import "../styles/style.css";
 
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents, Popup } from "react-leaflet";
-import L from "leaflet";
-
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
 
 const SUPA_URL = "https://soacqabfazwdvegnsldv.supabase.co";
 const KEY      = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvYWNxYWJmYXp3ZHZlZ25zbGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzQ5MDAsImV4cCI6MjA5NDQ1MDkwMH0.zqYZlpnOxrwxyLAUqJEoQXAP3Ykt66Ref2LEUjoroqw";
@@ -90,7 +81,7 @@ const db = {
   },
   async getReports() {
     try {
-      const res = await fetch(`${SUPA_URL}/rest/v1/public_reports?limit=200`, { headers: H });
+      const res = await fetch(`${SUPA_URL}/rest/v1/reports?select=*&order=created_at.desc&limit=200`, { headers: H });
       return res.ok ? res.json() : [];
     } catch { return []; }
   },
@@ -1076,7 +1067,7 @@ export default function UrbanPatch() {
   const uCons  = new Set(reports.map(r => r.constituency)).size;
   const total  = reports.length;
   const week   = reports.filter(r => Date.now() - new Date(r.created_at).getTime() < 7 * 864e5).length;
-  const myReports = reports.filter(r => r.reporter_id === currentUser.id);
+  const myReports = reports.filter(r => r.reporter_id === currentUser.id || r.reporter_alias === currentUser.alias);
   const consForDist = mlas.filter(m => m.district === form.district).sort((a, b) => a.constituency.localeCompare(b.constituency));
 
   const countByC = {};
@@ -1451,9 +1442,9 @@ export default function UrbanPatch() {
               <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: 0 }}>Discuss major problems anonymously with your city.</p>
             </div>
             
-            <div className="chat-window animate-in" style={{ position: "relative", zIndex: 10, background: "linear-gradient(135deg, #1e293b, #1a2744)", borderRadius: 20, color: "#f1f5f9" }}>
+            <div className="chat-window animate-in" style={{ position: "relative", zIndex: 10, backgroundImage: "url(/community_bg.png)", backgroundSize: "cover", backgroundPosition: "center", borderRadius: 20, color: "#1e293b", overflow: "hidden" }}><div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.82)", backdropFilter: "blur(2px)", borderRadius: 20 }} />
               
-              <div className="chat-messages" style={{ position: "relative", zIndex: 10 }}>
+              <div className="chat-messages" style={{ position: "relative", zIndex: 10, color: "#1e293b" }}>
                 {messages.length === 0 ? (
                   <p style={{ textAlign: "center", color: "var(--text-secondary)", marginTop: 40 }}>Be the first to start a discussion!</p>
                 ) : (
@@ -1473,7 +1464,7 @@ export default function UrbanPatch() {
                 <div ref={chatBottomRef} />
               </div>
               
-              <div className="chat-input-area" style={{ position: "relative", zIndex: 10 }}>
+              <div className="chat-input-area" style={{ position: "relative", zIndex: 10, color: "#1e293b" }}>
                 <input
                   type="text"
                   className="inp-field"

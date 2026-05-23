@@ -861,6 +861,22 @@ export default function UrbanPatch() {
     db.getMessages().then(d => setMessages(d || []));
   }, []);
 
+  // ── Scroll Reveal Observer
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) e.target.classList.add("visible");
+      });
+    }, { threshold: 0.1 });
+    
+    // Slight delay to allow DOM to render before observing
+    setTimeout(() => {
+      document.querySelectorAll(".animate-in").forEach(el => observer.observe(el));
+    }, 100);
+
+    return () => observer.disconnect();
+  }, [view]);
+
   useEffect(() => {
     if (view === "community" && chatBottomRef.current) {
       chatBottomRef.current.scrollIntoView({ behavior: "smooth" });
@@ -1003,14 +1019,17 @@ export default function UrbanPatch() {
         {/* ── DASHBOARD ── */}
         {view === "dashboard" && (
           <div className="slide-in">
-            <div className="hero-section">
-              <h1 className="hero-title">Be the change. <span style={{ color: "var(--accent-primary)" }}>Report it.</span></h1>
-              <p className="hero-subtitle">
-                Spot a garbage dump? Report it in seconds. Every submission automatically tags the responsible MLA &amp; MP, building a permanent, public record of neglect — and of action.
-              </p>
-              <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
-                <button className="btn-primary" onClick={goToReport}>📸 Report Garbage</button>
-                <button className="btn-secondary" onClick={() => setView("feed")}>Browse Reports →</button>
+            <div className="hero-section-wrapper">
+              <div className="bg-pan"></div>
+              <div className="hero-section fade-in-up-stagger" style={{ position: "relative", zIndex: 10 }}>
+                <h1 className="hero-title">Your city. Your voice. <span style={{ color: "var(--accent-primary)" }}>We hold them accountable, together.</span></h1>
+                <p className="hero-subtitle">
+                  Spot a garbage dump? Report it in seconds. Every submission automatically tags the responsible MLA & MP, building a permanent, public record of neglect - and of action.
+                </p>
+                <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
+                  <button className="btn-primary" onClick={goToReport}>📸 Report Garbage</button>
+                  <button className="btn-secondary" onClick={() => setView("feed")}>Browse Reports ➔</button>
+                </div>
               </div>
             </div>
 
@@ -1020,8 +1039,8 @@ export default function UrbanPatch() {
                 { n: uCons, l: "Areas Affected", s: "Across state" },
                 { n: week,  l: "New This Week", s: "Recent" },
               ].map(s => (
-                <div key={s.l} className="card stat-card hoverable">
-                  <div className="stat-value">{loadingRep ? "—" : s.n}</div>
+                <div key={s.l} className="card stat-card hoverable animate-in">
+                  <div className="stat-value">{loadingRep ? "-" : s.n}</div>
                   <div className="stat-label">{s.l}</div>
                   <div className="stat-sub">{s.s}</div>
                 </div>
@@ -1030,7 +1049,7 @@ export default function UrbanPatch() {
 
             <PieChart reports={reports} />
 
-            <div className="dash-grid">
+            <div className="dash-grid animate-in">
               <div className="card hoverable map-container" style={{ padding: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                   <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>🗺️ Live Report Map</h2>
@@ -1217,7 +1236,7 @@ export default function UrbanPatch() {
 
         {view === "report" && submitted && <SuccessScreen onDone={() => { setSubmitted(false); setView("dashboard"); }} />}
 
-        {/* ── FEED ── */}
+        {/* ── REPORTS FEED ── */}
         {view === "feed" && (
           <div className="slide-in">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
@@ -1244,7 +1263,11 @@ export default function UrbanPatch() {
               </div>
             ) : (
               <div className="dash-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))" }}>
-                {sortedFeed.map(r => <ReportCard key={r.id} r={r} expanded onClick={() => setSelReport(r)} onUpvote={handleUpvote} voted={votedReports.has(r.id)} />)}
+                {sortedFeed.map((r, i) => (
+                  <div className="animate-in" key={r.id} style={{ transitionDelay: `${Math.min(i * 0.05, 0.5)}s` }}>
+                    <ReportCard r={r} expanded onClick={() => setSelReport(r)} onUpvote={handleUpvote} voted={votedReports.has(r.id)} />
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -1290,8 +1313,9 @@ export default function UrbanPatch() {
               <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: 0 }}>Discuss major problems anonymously with your city.</p>
             </div>
             
-            <div className="chat-window">
-              <div className="chat-messages">
+            <div className="chat-window animate-in" style={{ position: "relative", zIndex: 10 }}>
+              <div className="community-bg-pan"></div>
+              <div className="chat-messages" style={{ position: "relative", zIndex: 10 }}>
                 {messages.length === 0 ? (
                   <p style={{ textAlign: "center", color: "var(--text-secondary)", marginTop: 40 }}>Be the first to start a discussion!</p>
                 ) : (
@@ -1311,7 +1335,7 @@ export default function UrbanPatch() {
                 <div ref={chatBottomRef} />
               </div>
               
-              <div className="chat-input-area">
+              <div className="chat-input-area" style={{ position: "relative", zIndex: 10 }}>
                 <input
                   type="text"
                   className="inp-field"
@@ -1357,7 +1381,9 @@ export default function UrbanPatch() {
 
         {/* ── ANALYTICS ── */}
         {view === "analytics" && (
-          <AnalyticsDashboard reports={reports} />
+          <div className="slide-in animate-in">
+            <AnalyticsDashboard reports={reports} />
+          </div>
         )}
 
         {/* ── REPORT DETAIL MODAL ── */}

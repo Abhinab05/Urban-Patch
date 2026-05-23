@@ -81,8 +81,21 @@ const db = {
   },
   async getReports() {
     try {
-      const res = await fetch(`${SUPA_URL}/rest/v1/reports?select=*&order=created_at.desc&limit=200`, { headers: H });
-      return res.ok ? res.json() : [];
+      const [res1, res2] = await Promise.all([
+        fetch(`${SUPA_URL}/rest/v1/public_reports?select=*&order=created_at.desc&limit=200`, { headers: H }),
+        fetch(`${SUPA_URL}/rest/v1/reports?select=id,reporter_id,reporter_alias&order=created_at.desc&limit=200`, { headers: H })
+      ]);
+      const publicRep = res1.ok ? await res1.json() : [];
+      const baseRep = res2.ok ? await res2.json() : [];
+      
+      const baseMap = {};
+      baseRep.forEach(r => { baseMap[r.id] = r; });
+      
+      return publicRep.map(r => ({
+        ...r,
+        reporter_id: baseMap[r.id] ? baseMap[r.id].reporter_id : null,
+        reporter_alias: baseMap[r.id] ? baseMap[r.id].reporter_alias : null
+      }));
     } catch { return []; }
   },
   async insertReport(data) {

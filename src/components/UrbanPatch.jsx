@@ -1236,7 +1236,7 @@ export default function UrbanPatch() {
                 </div>
                 <AssamMap reports={reports} />
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 16 }}>
-                  {WASTE.slice(0, 4).map(w => (
+                  {WASTE.map(w => (
                     <span key={w.id} style={{ fontSize: 12, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 4, fontWeight: 600 }}>
                       <span style={{ width: 10, height: 10, borderRadius: "50%", background: w.color, display: "inline-block" }} />{w.label}
                     </span>

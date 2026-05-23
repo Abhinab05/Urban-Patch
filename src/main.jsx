@@ -37,7 +37,7 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 
 async function boot() {
   try {
-    const { default: UrbanPatch } = await import("../UrbanPatch.jsx");
+    const { default: UrbanPatch } = await import("./components/UrbanPatch.jsx");
     root.render(
       <React.StrictMode>
         <ErrorBoundary>

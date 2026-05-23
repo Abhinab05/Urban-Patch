@@ -1132,7 +1132,7 @@ export default function UrbanPatch() {
     { id: "dashboard", icon: "📊", label: "Dashboard" },
     { id: "report",    icon: "📸", label: "Report" },
     { id: "feed",      icon: "📋", label: "Reports" },
-    { id: "mine",      icon: "👤", label: "My Contributions" },
+    { id: "mine",      icon: "👤", label: "My Reports" },
     { id: "community", icon: "💬", label: "Community" },
   ];
 
@@ -1458,7 +1458,7 @@ export default function UrbanPatch() {
                 </div>
                 <span className="badge" style={{ background: "rgba(16,185,129,0.1)", color: "var(--accent-secondary)" }}>Your Identity</span>
               </div>
-              <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em", margin: "0 0 4px 0" }}>My Contributions</h1>
+              <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em", margin: "0 0 4px 0" }}>My Reports</h1>
               <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: 0 }}>
                 {myReports.length === 0 ? "You haven't submitted any reports yet." : `${myReports.length} report${myReports.length !== 1 ? "s" : ""} submitted by you.`}
               </p>

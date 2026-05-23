@@ -526,9 +526,30 @@ export default function UrbanPatch() {
         ) || "";
       }
 
+      let matchedConstituency = "";
+      const locStrings = [data.locality, data.city, data.principalSubdivision, data.subLocality]
+        .filter(Boolean)
+        .map(s => s.toLowerCase().replace(' district', '').trim());
+
+      if (mlas && mlas.length > 0) {
+        for (const locStr of locStrings) {
+          if (!locStr) continue;
+          const foundMla = mlas.find(m => {
+            const cName = m.constituency.toLowerCase();
+            return locStr.includes(cName) || cName.includes(locStr);
+          });
+          if (foundMla) {
+            matchedConstituency = foundMla.constituency;
+            if (!matchedDistrict) matchedDistrict = foundMla.district;
+            break;
+          }
+        }
+      }
+
       setForm(prev => ({
         ...prev,
         district: matchedDistrict || prev.district,
+        constituency: matchedConstituency || prev.constituency,
         area: data.locality || data.subLocality || prev.area
       }));
     } catch (e) {
@@ -601,7 +622,7 @@ export default function UrbanPatch() {
     db.getMla(form.constituency).then(mla => {
       if (!mla) { setPreview(null); setLoadingPrev(false); return; }
       db.getMp(mla.lok_sabha_seat).then(mp => {
-        setPreview({ mla: { name: mla.name, party: mla.party }, mp: { name: mp?.name, party: mp?.party } });
+        setPreview({ mla: { name: mla.name, party: mla.party, lok_sabha_seat: mla.lok_sabha_seat }, mp: { name: mp?.name, party: mp?.party } });
         setLoadingPrev(false);
       });
     });

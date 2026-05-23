@@ -259,7 +259,9 @@ function AssamMap({ reports }) {
 
 
 
-// ── Shame Board ────────────────────────────────────────────────────────────
+
+
+
 function ShameBoard({ reports }) {
   const [tab, setTab] = useState("mla");
   const medals = ["🥇", "🥈", "🥉"];

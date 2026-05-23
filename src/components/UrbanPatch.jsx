@@ -165,6 +165,15 @@ const db = {
       return res.ok ? res.json() : [];
     } catch { return []; }
   },
+  async deleteMessage(id) {
+    try {
+      const res = await fetch(`${SUPA_URL}/rest/v1/community_messages?id=eq.${id}`, {
+        method: "DELETE",
+        headers: H
+      });
+      return res.ok;
+    } catch { return false; }
+  },
   async insertMessage(data) {
     try {
       const res = await fetch(`${SUPA_URL}/rest/v1/community_messages`, {
@@ -398,7 +407,7 @@ function ReportCard({ r, expanded, onClick, onUpvote, voted }) {
   return (
     <div className="report-item stylish-card" onClick={onClick}>
       {r.photo_url ? (
-        <img src={r.photo_url} alt="report" className="report-thumb" />
+        <img src={r.photo_url} alt="report" className="report-thumb" style={{ width: "100%", height: 200, objectFit: "cover", borderRadius: "12px 12px 0 0" }} />
       ) : (
         <div className="report-icon-thumb" style={{ background: w.color + "15", color: w.color, border: `1px solid ${w.color}30` }}>
           {w.icon}
@@ -1459,13 +1468,29 @@ export default function UrbanPatch() {
                   messages.map(msg => {
                     const isMine = msg.author_id === currentUser.id;
                     return (
-                      <div key={msg.id} className={`chat-bubble ${isMine ? "mine" : "theirs"}`}>
-                        <div className="chat-meta">
-                          <span>{isMine ? "You" : msg.author_alias}</span>
-                          <span style={{ fontWeight: 500 }}>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <div key={msg.id} className={`chat-bubble ${isMine ? "mine" : "theirs"}`} style={{ position: "relative" }}>
+                          <div className="chat-meta">
+                            <span>{isMine ? "You" : msg.author_alias}</span>
+                            <span style={{ fontWeight: 500 }}>
+                              {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {isAdmin && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if(window.confirm("Delete this message?")) {
+                                      const ok = await db.deleteMessage(msg.id);
+                                      if (ok) db.getMessages().then(m => setMessages(m || []));
+                                    }
+                                  }}
+                                  style={{ marginLeft: 8, background: "none", border: "none", color: "var(--danger)", cursor: "pointer", fontSize: 12, padding: 0 }}
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </span>
+                          </div>
+                          <div>{msg.content}</div>
                         </div>
-                        <div>{msg.content}</div>
-                      </div>
                     );
                   })
                 )}

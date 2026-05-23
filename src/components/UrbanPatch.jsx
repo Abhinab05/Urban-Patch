@@ -1272,12 +1272,7 @@ export default function UrbanPatch() {
                 </button>
               </div>
               {position && (
-                <div style={{ height: 300, width: "100%", borderRadius: 12, overflow: "hidden", border: "1px solid var(--border-color)", marginBottom: 20 }}>
-                  <MapContainer center={position} zoom={15} scrollWheelZoom={true} style={{ height: "100%", width: "100%", zIndex: 10 }}>
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
-                    <DraggableMarker />
-                  </MapContainer>
-                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: 12, marginBottom: 16, fontSize: 13, color: "var(--accent-secondary)", fontWeight: 600 }}><span>📍</span><span>Location captured: {position[0].toFixed(5)}, {position[1].toFixed(5)}</span></div>
               )}
               <div className="form-group">
                 <label className="inp-label">DISTRICT</label>

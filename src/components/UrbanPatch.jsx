@@ -407,7 +407,7 @@ function ReportCard({ r, expanded, onClick, onUpvote, voted }) {
   return (
     <div className="report-item stylish-card" onClick={onClick}>
       {r.photo_url ? (
-        <img src={r.photo_url} alt="report" className="report-thumb" style={{ width: "100%", height: 200, objectFit: "cover", borderRadius: "12px 12px 0 0" }} />
+        <img src={r.photo_url} alt="report" className="report-thumb" style={{ width: 140, height: 140, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
       ) : (
         <div className="report-icon-thumb" style={{ background: w.color + "15", color: w.color, border: `1px solid ${w.color}30` }}>
           {w.icon}

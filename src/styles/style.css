@@ -1193,17 +1193,19 @@ ul, li { margin: 0; padding: 0; list-style: none; }
   position: relative;
   z-index: 10;
   width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
 }
 
 .quote-slide {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 100%;
-  transform: translateY(-50%);
+  grid-row: 1;
+  grid-column: 1;
   opacity: 0;
   transition: opacity 1.5s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .quote-slide.active {
@@ -1486,3 +1488,13 @@ ul, li { margin: 0; padding: 0; list-style: none; }
 }
 
 @media (max-width: 400px) { .logo span { display: none; } .logo-icon { margin-right: 0; } }
+@media (max-width: 600px) {
+  .quote-text {
+    font-size: 20px;
+    margin: 0 0 16px 0;
+  }
+  .quote-carousel {
+    padding: 40px 20px;
+    min-height: auto;
+  }
+}

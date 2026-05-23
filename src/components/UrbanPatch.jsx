@@ -231,7 +231,10 @@ function AssamMap({ reports }) {
   
   return (
     <div style={{ width: "100%", height: "450px", borderRadius: 16, overflow: "hidden", position: "relative", boxShadow: "var(--shadow-sm)", zIndex: 1 }}>
-      <MapContainer center={[26.2006, 92.9376]} zoom={7} style={{ height: "100%", width: "100%", zIndex: 1 }} scrollWheelZoom={false}>
+            <div className="map-badge">
+        <span style={{ fontSize: 16 }}>📍</span> Live Reports: Currently tracking Assam only
+      </div>
+<MapContainer center={[26.2006, 92.9376]} zoom={7} style={{ height: "100%", width: "100%", zIndex: 1 }} scrollWheelZoom={false}>
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           attribution='&copy; <a href="https://carto.com/">Carto</a>'
@@ -242,7 +245,7 @@ function AssamMap({ reports }) {
           const iconHtml = `<div style="background-color: ${col}; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'"></div>`;
           const customIcon = L.divIcon({ html: iconHtml, className: "custom-leaflet-icon", iconSize: [16, 16], iconAnchor: [8, 8] });
           return (
-            <Marker key={r.id || i} position={[r.lat, r.lng]} icon={customIcon}>
+            <Marker key={r.id || i} position={[parseFloat(r.lat), parseFloat(r.lng)]} icon={customIcon}>
               <Popup>
                 <div style={{ padding: "4px", minWidth: 150 }}>
                   <h4 style={{ margin: "0 0 4px 0", fontSize: 14 }}>{w?.label || "Waste"}</h4>
@@ -252,6 +255,7 @@ function AssamMap({ reports }) {
             </Marker>
           );
         })}
+        <MapResetControl />
       </MapContainer>
     </div>
   );
@@ -661,6 +665,16 @@ function AnalyticsDashboard({ reports }) {
 }
 
 // ── PIE CHART COMPONENT ──────────────────────────────────────────────────
+
+function MapResetControl() {
+  const map = useMap();
+  return (
+    <button className="map-reset-btn" onClick={(e) => { e.preventDefault(); e.stopPropagation(); map.flyTo([26.2006, 92.9376], 7); }}>
+      <span>↺</span> Reset View
+    </button>
+  );
+}
+
 function PieChart({ reports }) {
   const counts = {};
   reports.forEach(r => { counts[r.waste_type] = (counts[r.waste_type] || 0) + 1; });
@@ -730,24 +744,29 @@ const QUOTES = [
   { text: "Cleanliness is not just a choice, it is a civic duty.", author: "Community Initiative" },
   { text: "Every report builds a permanent public record. Silence is no longer an option.", author: "Urban Patch" },
   { text: "Small actions today lead to a sustainable city tomorrow.", author: "Environmental Vision" },
-  { text: "Your city. Your voice. We hold them accountable, together.", author: "Urban Patch Motto" }
+  { text: "Your city. Your voice. We hold them accountable, together.", author: "Urban Patch Motto" },
+  { text: "Progress is impossible without change, and those who cannot change their minds cannot change anything.", author: "George Bernard Shaw" },
+  { text: "The earth is what we all have in common. Let's protect it.", author: "Wendell Berry" }
 ];
 
 function QuoteCarousel() {
   const [idx, setIdx] = useState(0);
   useEffect(() => {
-    const int = setInterval(() => setIdx(i => (i + 1) % QUOTES.length), 6000);
+    const int = setInterval(() => setIdx(i => (i + 1) % QUOTES.length), 5000);
     return () => clearInterval(int);
   }, []);
   
   return (
     <div className="quote-carousel animate-in">
-      {QUOTES.map((q, i) => (
-        <div key={i} style={{ position: i === idx ? "relative" : "absolute", opacity: i === idx ? 1 : 0, transition: "opacity 1s ease", top: i === idx ? 0 : 0, left: 0, width: "100%", height: "100%" }}>
-          <p className="quote-text">"${q.text}"</p>
-          <p className="quote-author">— ${q.author}</p>
-        </div>
-      ))}
+      <div className="quote-carousel-bg"></div>
+      <div className="quote-carousel-content">
+        {QUOTES.map((q, i) => (
+          <div key={i} className={`quote-slide ${i === idx ? 'active' : ''}`}>
+            <p className="quote-text">"${q.text}"</p>
+            <p className="quote-author">— ${q.author}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1302,7 +1321,7 @@ export default function UrbanPatch() {
             </div>
             
             <div className="chat-window animate-in" style={{ position: "relative", zIndex: 10 }}>
-              <div className="community-bg-pan"></div>
+              
               <div className="chat-messages" style={{ position: "relative", zIndex: 10 }}>
                 {messages.length === 0 ? (
                   <p style={{ textAlign: "center", color: "var(--text-secondary)", marginTop: 40 }}>Be the first to start a discussion!</p>

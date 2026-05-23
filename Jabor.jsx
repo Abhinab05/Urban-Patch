@@ -67,6 +67,16 @@ const db = {
       return res.ok ? d[0] : null;
     } catch { return null; }
   },
+  async updateReportStatus(id, status) {
+    try {
+      const res = await fetch(`${SUPA_URL}/rest/v1/reports?id=eq.${id}`, {
+        method: "PATCH",
+        headers: { ...H, "Content-Type": "application/json" },
+        body: JSON.stringify({ status })
+      });
+      return res.ok;
+    } catch { return false; }
+  },
   async uploadPhoto(file) {
     try {
       const mimeToExt = { "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "jpg", "image/heif": "jpg" };
@@ -982,9 +992,47 @@ export default function UrbanPatch() {
                   ))}
                 </div>
               </div>
-              <div style={{ marginTop: 24, display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 16, borderTop: "1px solid var(--border-color)" }}>
-                <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>Status: <strong style={{ color: selReport.status === "open" ? "var(--danger)" : "var(--accent-secondary)" }}>{selReport.status?.toUpperCase() || "OPEN"}</strong></span>
-                <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>Reported <TimeAgo date={selReport.created_at} /></span>
+              <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 16, paddingTop: 16, borderTop: "1px solid var(--border-color)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>Status:</span>
+                    <select
+                      value={selReport.status || "open"}
+                      onChange={async (e) => {
+                        const newStatus = e.target.value;
+                        const ok = await db.updateReportStatus(selReport.id, newStatus);
+                        if (ok) {
+                          setSelReport({ ...selReport, status: newStatus });
+                          setReports(prev => prev.map(r => r.id === selReport.id ? { ...r, status: newStatus } : r));
+                        } else {
+                          alert("Failed to update status");
+                        }
+                      }}
+                      style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 13, fontWeight: 700, color: selReport.status === "open" ? "var(--danger)" : "var(--accent-secondary)", background: "var(--bg-surface)", cursor: "pointer" }}
+                    >
+                      <option value="open">OPEN</option>
+                      <option value="working on it">WORKING ON IT</option>
+                      <option value="resolved">RESOLVED</option>
+                      <option value="ignored">IGNORED</option>
+                    </select>
+                  </div>
+                  <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>Reported <TimeAgo date={selReport.created_at} /></span>
+                </div>
+                <button
+                  onClick={() => {
+                    const text = `Check out this reported issue in ${selReport.constituency} constituency: ${selReport.description || "Civic Issue"}`;
+                    if (navigator.share) {
+                      navigator.share({ title: 'Urban Patch Report', text, url: window.location.href }).catch(e => console.error(e));
+                    } else {
+                      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`, '_blank');
+                    }
+                  }}
+                  className="btn-primary"
+                  style={{ width: "100%", padding: "10px", fontSize: 14, display: "flex", justifyContent: "center", gap: 8, alignItems: "center" }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                  Share this Report
+                </button>
               </div>
             </div>
           </div>

@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef } from "react";
 import "../styles/style.css";
 
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents, Popup } from "react-leaflet";
 import L from "leaflet";
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -227,148 +227,37 @@ function getStatusColor(status) {
 
 // ── Assam SVG Map ────────────────────────────────────────────────────────
 function AssamMap({ reports }) {
-  const LON_MIN = 89.68, LON_MAX = 96.01;
-  const LAT_MIN = 24.13, LAT_MAX = 27.96;
-  const tx = lon => ((lon - LON_MIN) / (LON_MAX - LON_MIN)) * 100;
-  const ty = lat => ((LAT_MAX - lat) / (LAT_MAX - LAT_MIN)) * 100;
-
-  const gps   = reports.filter(r => r.lat && r.lng);
-  const nogps = reports.filter(r => !r.lat || !r.lng);
-  const CITIES = [
-    [91.74,26.18],[94.91,27.48],[93.97,26.75],[92.68,26.35],
-    [91.00,26.32],[90.27,26.40],[89.97,26.02],[94.21,26.74],
-    [95.37,27.49],[92.80,26.68],[91.44,26.45],[90.55,26.48],
-    [93.60,26.55],[92.35,24.87],[92.85,24.85],[94.65,27.00],
-  ];
-
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [dragging, setDragging] = useState(false);
-  const dragStart = useRef(null);
-  const lastPan = useRef({ x: 0, y: 0 });
-  const containerRef = useRef(null);
-
-  const MIN_Z = 1, MAX_Z = 5;
-  const clamp = z => Math.min(MAX_Z, Math.max(MIN_Z, z));
-
-  const onWheel = e => { e.preventDefault(); setZoom(z => clamp(z + (e.deltaY < 0 ? 0.15 : -0.15))); };
-  const onMD = e => { if (zoom <= 1) return; setDragging(true); dragStart.current = { x: e.clientX, y: e.clientY }; lastPan.current = { ...pan }; };
-  const onMM = e => {
-    if (!dragging || !dragStart.current) return;
-    const dx = e.clientX - dragStart.current.x;
-    const dy = e.clientY - dragStart.current.y;
-    setPan({ x: lastPan.current.x + dx, y: lastPan.current.y + dy });
-  };
-  const onMU = () => { setDragging(false); dragStart.current = null; };
-  useEffect(() => { const el = containerRef.current; if (!el) return; el.addEventListener("wheel", onWheel, { passive: false }); return () => el.removeEventListener("wheel", onWheel); }, [zoom]);
-
-  const districtCounts = {};
-  reports.forEach(r => { districtCounts[r.district] = (districtCounts[r.district] || 0) + 1; });
-  const maxCount = Math.max(1, ...Object.values(districtCounts));
-
+  const gps = reports.filter(r => r.lat && r.lng);
+  
   return (
-    <div ref={containerRef} style={{ width: "100%", aspectRatio: "2/1", background: "linear-gradient(135deg,#e8f4fd,#f0f9f0)", borderRadius: 12, overflow: "hidden", cursor: zoom > 1 ? (dragging ? "grabbing" : "grab") : "default", userSelect: "none", position: "relative" }} onMouseDown={onMD} onMouseMove={onMM} onMouseUp={onMU} onMouseLeave={onMU}>
-      <svg viewBox="0 0 100 50" style={{ width: "100%", height: "100%", transform: `scale(${zoom}) translate(${pan.x/10}px,${pan.y/10}px)`, transformOrigin: "center center", transition: dragging ? "none" : "transform 0.1s" }} preserveAspectRatio="xMidYMid meet">
-        <rect width={100} height={50} fill="#dbeafe" opacity={0.3} rx={2}/>
-        <text x={50} y={25} textAnchor="middle" fontSize={6} fill="#94a3b8" fontWeight={700} opacity={0.5}>ASSAM</text>
-        <image href={ASSAM_MAP_SRC} width="100" height="50" opacity="0.3" preserveAspectRatio="none"/>
+    <div style={{ width: "100%", height: "450px", borderRadius: 16, overflow: "hidden", position: "relative", boxShadow: "var(--shadow-sm)", zIndex: 1 }}>
+      <MapContainer center={[26.2006, 92.9376]} zoom={7} style={{ height: "100%", width: "100%", zIndex: 1 }} scrollWheelZoom={false}>
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://carto.com/">Carto</a>'
+        />
         {gps.map((r, i) => {
-          const cx = tx(r.lng), cy = ty(r.lat);
-          const w = WASTE.find(t => t.id === r.waste_type), col = w?.color || "#EF4444";
+          const w = WASTE.find(t => t.id === r.waste_type);
+          const col = w ? w.color : "#EF4444";
+          const iconHtml = `<div style="background-color: ${col}; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'"></div>`;
+          const customIcon = L.divIcon({ html: iconHtml, className: "custom-leaflet-icon", iconSize: [16, 16], iconAnchor: [8, 8] });
           return (
-            <g key={`g${i}`} className="pin-g" style={{ animationDelay: `${i * 0.12}s` }}>
-              <circle cx={cx} cy={cy - 2.8} r="2.2" fill={col} stroke="#fff" strokeWidth="0.5" opacity={0.9}/>
-              <line x1={cx} y1={cy - 0.6} x2={cx} y2={cy} stroke={col} strokeWidth="0.8" strokeLinecap="round"/>
-            </g>
+            <Marker key={r.id || i} position={[r.lat, r.lng]} icon={customIcon}>
+              <Popup>
+                <div style={{ padding: "4px", minWidth: 150 }}>
+                  <h4 style={{ margin: "0 0 4px 0", fontSize: 14 }}>{w?.label || "Waste"}</h4>
+                  <p style={{ margin: "0 0 8px 0", fontSize: 12, color: "#666" }}>{r.district}</p>
+                </div>
+              </Popup>
+            </Marker>
           );
         })}
-        {nogps.map((r, i) => {
-          const w = WASTE.find(t => t.id === r.waste_type), city = CITIES[i % CITIES.length], cx = tx(city[0]), cy = ty(city[1]), col = w?.color || "#EF4444";
-          return (
-            <g key={`n${i}`} className="pin-g" style={{ animationDelay: `${i * 0.35}s`, opacity: 0.65 }}>
-              <circle cx={cx} cy={cy - 2.8} r="1.8" fill={col} stroke="#fff" strokeWidth="0.4"/>
-              <line x1={cx} y1={cy - 1} x2={cx} y2={cy} stroke={col} strokeWidth="0.7" strokeLinecap="round"/>
-            </g>
-          );
-        })}
-      </svg>
-      <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 4 }}>
-        <button onClick={() => setZoom(z => clamp(z + 0.5))} style={{ width: 26, height: 26, borderRadius: 6, background: "#fff", border: "1px solid var(--border-color)", cursor: "pointer", fontWeight: 800, fontSize: 14 }}>+</button>
-        <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} style={{ width: 26, height: 26, borderRadius: 6, background: "#fff", border: "1px solid var(--border-color)", cursor: "pointer", fontSize: 11 }}>↺</button>
-      </div>
+      </MapContainer>
     </div>
   );
 }
 
-// ── Report Card ───────────────────────────────────────────────────────────
-function ReportCard({ r, expanded, onClick, onUpvote, voted }) {
-  const w = WASTE.find(t => t.id === r.waste_type) || WASTE[0];
-  const isHighPriority = (r.upvotes || 0) >= 10;
-
-  return (
-    <div className="report-item" onClick={onClick}>
-      {r.photo_url ? (
-        <img src={r.photo_url} alt="report" className="report-thumb" />
-      ) : (
-        <div className="report-icon-thumb" style={{ background: w.color + "15", color: w.color, border: `1px solid ${w.color}30` }}>
-          {w.icon}
-        </div>
-      )}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
-          <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-primary)" }}>{r.constituency}</span>
-          <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>• {r.district}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: getStatusColor(r.status) + "20", color: getStatusColor(r.status) }}>
-            {(r.status || "OPEN").toUpperCase()}
-          </span>
-          {isHighPriority && <span className="priority-badge">🔥 HIGH PRIORITY</span>}
-          <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}><TimeAgo date={r.created_at} /></span>
-        </div>
-        {(r.area || r.landmark) && (
-          <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            📍 {[r.area, r.landmark].filter(Boolean).join(" • ")}
-          </p>
-        )}
-        {r.reporter_alias && (
-          <div className="reporter-line">
-            <span>👤 Reported by</span>
-            <span className="reporter-alias">{r.reporter_alias}</span>
-          </div>
-        )}
-        <p style={{
-          fontSize: 14, color: "var(--text-primary)", marginBottom: 10, marginTop: 6, lineHeight: 1.5,
-          overflow: "hidden", display: "-webkit-box", WebkitLineClamp: expanded ? "unset" : 2,
-          WebkitBoxOrient: "vertical", wordBreak: "break-word",
-        }}>{r.description}</p>
-
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-main)", padding: "4px 8px", borderRadius: 6 }}>
-              <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 600 }}>MLA:</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{r.mla_name}</span>
-              <Badge party={r.mla_party} />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-main)", padding: "4px 8px", borderRadius: 6 }}>
-              <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 600 }}>MP:</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{r.mp_name}</span>
-              <Badge party={r.mp_party} />
-            </div>
-          </div>
-          <button
-            className={`upvote-btn ${voted ? "voted" : ""}`}
-            onClick={e => { e.stopPropagation(); onUpvote && onUpvote(r.id); }}
-            title={voted ? "You've already flagged this" : "I see this issue too"}
-          >
-            <span className="eye">👀</span>
-            {voted ? "Flagged" : "I see this too"} · {r.upvotes || 0}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Shame Board ───────────────────────────────────────────────────────────
+// ── Shame Board ────────────────────────────────────────────────────────────
 function ShameBoard({ reports }) {
   const [tab, setTab] = useState("mla");
   const medals = ["🥇", "🥈", "🥉"];
@@ -705,66 +594,90 @@ function PieChart({ reports }) {
   
   let cum = 0;
   const segments = WASTE.slice(0,6).map(w => {
-    const p = ((counts[w.id] || 0) / total) * 100;
+    const p = ((counts[w.id] || 0) / total);
+    const startAngle = cum * 360;
     cum += p;
-    return { ...w, pct: p, cum };
-  });
+    const endAngle = cum * 360;
+    return { ...w, startAngle, endAngle, pct: p * 100, count: counts[w.id] || 0 };
+  }).filter(s => s.count > 0);
+
+  const getCoordinatesForPercent = (percent) => {
+    const x = Math.cos(2 * Math.PI * percent);
+    const y = Math.sin(2 * Math.PI * percent);
+    return [x, y];
+  };
 
   return (
-    <div className="card hoverable" style={{ marginBottom: 24 }}>
-      <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16 }}>📊 Waste Type Breakdown</h2>
-      <div className="pie-chart-container" style={{
-        "--pie-c1": segments[0].color, "--pie-p1": `${segments[0].pct}%`,
-        "--pie-c2": segments[1].color, "--pie-p2": `${segments[1].cum}%`,
-        "--pie-c3": segments[2].color, "--pie-p3": `${segments[2].cum}%`,
-        "--pie-c4": segments[3].color, "--pie-p4": `${segments[3].cum}%`,
-        "--pie-c5": segments[4].color, "--pie-p5": `${segments[4].cum}%`,
-        "--pie-c6": segments[5].color, "--pie-p6": `${segments[5].cum}%`,
-      }}>
-        <div className="pie-chart"></div>
+    <div className="card hoverable animate-in" style={{ marginBottom: 24, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 32 }}>
+      <div style={{ flex: 1, minWidth: 250 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8, letterSpacing: "-0.01em" }}>📊 Waste Type Breakdown</h2>
+        <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 24 }}>Distribution of reported issues across categories.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {segments.map(s => (
-            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600 }}>
-              <span style={{ width: 12, height: 12, borderRadius: "50%", background: s.color, display: "inline-block" }} />
-              <span style={{ width: 150 }}>{s.label}</span>
-              <span style={{ color: "var(--text-secondary)" }}>{counts[s.id] || 0} ({Math.round(s.pct)}%)</span>
+            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 14, fontWeight: 600 }}>
+              <span style={{ width: 14, height: 14, borderRadius: "4px", background: s.color, display: "inline-block", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }} />
+              <span style={{ flex: 1 }}>{s.label}</span>
+              <span style={{ color: "var(--text-primary)", fontWeight: 800 }}>{s.count} <span style={{ color: "var(--text-secondary)", fontWeight: 500, fontSize: 12 }}>({Math.round(s.pct)}%)</span></span>
             </div>
           ))}
+          {segments.length === 0 && <p style={{ color: "var(--text-secondary)" }}>No data available.</p>}
         </div>
       </div>
+      
+      {segments.length > 0 && (
+        <div style={{ width: 220, height: 220, position: "relative" }}>
+          <svg viewBox="-1 -1 2 2" style={{ transform: "rotate(-90deg)", width: "100%", height: "100%", overflow: "visible" }}>
+            {segments.map(s => {
+              const start = getCoordinatesForPercent(s.startAngle / 360);
+              const end = getCoordinatesForPercent(s.endAngle / 360);
+              const largeArcFlag = s.pct > 50 ? 1 : 0;
+              const pathData = [
+                `M ${start[0]} ${start[1]}`,
+                `A 1 1 0 ${largeArcFlag} 1 ${end[0]} ${end[1]}`,
+                `L 0 0`,
+              ].join(' ');
+              if (s.pct === 100) return <circle key={s.id} cx="0" cy="0" r="1" fill={s.color} />;
+              return (
+                <path key={s.id} d={pathData} fill={s.color} className="pie-slice" style={{ transition: "all 0.3s ease", cursor: "pointer", stroke: "#fff", strokeWidth: 0.02 }} />
+              );
+            })}
+          </svg>
+          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 120, height: 120, background: "var(--bg-surface)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", boxShadow: "inset 0 2px 10px rgba(0,0,0,0.05)" }}>
+            <span style={{ fontSize: 28, fontWeight: 800 }}>{total}</span>
+            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600, textTransform: "uppercase" }}>Total</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Success Screen ────────────────────────────────────────────────────────
-function SuccessScreen({ onDone }) {
-  const [progress, setProgress] = useState(0);
+const QUOTES = [
+  { text: "Cleanliness is not just a choice, it is a civic duty.", author: "Community Initiative" },
+  { text: "Every report builds a permanent public record. Silence is no longer an option.", author: "Urban Patch" },
+  { text: "Small actions today lead to a sustainable city tomorrow.", author: "Environmental Vision" },
+  { text: "Your city. Your voice. We hold them accountable, together.", author: "Urban Patch Motto" }
+];
+
+function QuoteCarousel() {
+  const [idx, setIdx] = useState(0);
   useEffect(() => {
-    const start = Date.now();
-    const interval = setInterval(() => {
-      const pct = Math.min(((Date.now() - start) / 3000) * 100, 100);
-      setProgress(pct);
-      if (pct >= 100) { clearInterval(interval); setTimeout(onDone, 200); }
-    }, 30);
-    return () => clearInterval(interval);
+    const int = setInterval(() => setIdx(i => (i + 1) % QUOTES.length), 6000);
+    return () => clearInterval(int);
   }, []);
-
+  
   return (
-    <div className="card pop-in" style={{ maxWidth: 480, margin: "60px auto", textAlign: "center", padding: "40px 24px" }}>
-      <div style={{ fontSize: 64, marginBottom: 24 }}>✅</div>
-      <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12, color: "var(--text-primary)" }}>Report Submitted!</h2>
-      <p style={{ color: "var(--text-secondary)", fontSize: 16, lineHeight: 1.6, marginBottom: 32 }}>
-        Your report is now live.<br />The responsible MLA &amp; MP have been officially tagged.
-      </p>
-      <div className="progress-track" style={{ height: 8, marginBottom: 16 }}>
-        <div className="progress-fill" style={{ width: `${progress}%` }} />
-      </div>
-      <p style={{ color: "var(--accent-primary)", fontWeight: 600, fontSize: 14 }}>Taking you back to the dashboard...</p>
+    <div className="quote-carousel animate-in">
+      {QUOTES.map((q, i) => (
+        <div key={i} style={{ position: i === idx ? "relative" : "absolute", opacity: i === idx ? 1 : 0, transition: "opacity 1s ease", top: i === idx ? 0 : 0, left: 0, width: "100%", height: "100%" }}>
+          <p className="quote-text">"${q.text}"</p>
+          <p className="quote-author">— ${q.author}</p>
+        </div>
+      ))}
     </div>
   );
 }
 
-// ── MAIN APP COMPONENT ────────────────────────────────────────────────────
 export default function UrbanPatch() {
   // ── User identity
   const [currentUser]  = useState(() => getOrCreateUser());
@@ -979,7 +892,7 @@ export default function UrbanPatch() {
             <button
               key={n.id}
               id={`nav-${n.id}`}
-              className={`nav-item ${view === n.id ? "active" : ""} ${n.id === "mine" ? "my-reports-active" : ""}`}
+              className={`nav-item ${view === n.id ? "active " + (n.id === "mine" ? "my-reports-active" : "") : ""}`}
               onClick={() => { setView(n.id); setSubmitted(false); }}
             >
               {n.icon} <span className="hide-mobile">{n.label}</span>
@@ -1047,6 +960,7 @@ export default function UrbanPatch() {
               ))}
             </div>
 
+            <QuoteCarousel />
             <PieChart reports={reports} />
 
             <div className="dash-grid animate-in">

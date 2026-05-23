@@ -393,7 +393,7 @@ body {
 /* Floating Action Button */
 .fab {
   position: fixed;
-  bottom: 24px;
+  bottom: 84px;
   right: 24px;
   width: 64px;
   height: 64px;
@@ -974,7 +974,7 @@ ul, li { margin: 0; padding: 0; list-style: none; }
 }
 
 @media (max-width: 767px) {
-  .user-chip span.alias-text { display: none; }
+  .user-chip span.alias-text { display: inline; font-size: 11px; }
   .pin-box { padding: 28px 20px; }
   .heatmap-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
 }
@@ -1054,9 +1054,9 @@ ul, li { margin: 0; padding: 0; list-style: none; }
 
 @media (max-width: 767px) {
   .top-nav {
-    flex-direction: column;
-    gap: 16px;
-    padding: 12px;
+    flex-direction: row;
+    gap: 8px;
+    padding: 12px 16px;
   }
   .nav-links {
     flex-wrap: wrap;
@@ -1484,3 +1484,5 @@ ul, li { margin: 0; padding: 0; list-style: none; }
     padding: 16px;
   }
 }
+
+@media (max-width: 400px) { .logo span { display: none; } .logo-icon { margin-right: 0; } }

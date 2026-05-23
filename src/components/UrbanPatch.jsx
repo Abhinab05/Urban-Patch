@@ -154,6 +154,22 @@ const db = {
       });
       return res.ok;
     } catch { return false; }
+  },
+  async getMessages() {
+    try {
+      const res = await fetch(`${SUPA_URL}/rest/v1/community_messages?order=created_at.asc&limit=100`, { headers: H });
+      return res.ok ? res.json() : [];
+    } catch { return []; }
+  },
+  async insertMessage(data) {
+    try {
+      const res = await fetch(`${SUPA_URL}/rest/v1/community_messages`, {
+        method: "POST",
+        headers: { ...H, "Content-Type": "application/json", Prefer: "return=representation" },
+        body: JSON.stringify(data),
+      });
+      return res.ok;
+    } catch { return false; }
   }
 };
 
@@ -211,8 +227,8 @@ function getStatusColor(status) {
 
 // ── Assam SVG Map ────────────────────────────────────────────────────────
 function AssamMap({ reports }) {
-  const LON_MIN = 89.55, LON_MAX = 96.25;
-  const LAT_MIN = 23.95, LAT_MAX = 28.25;
+  const LON_MIN = 89.65, LON_MAX = 96.25;
+  const LAT_MIN = 23.95, LAT_MAX = 28.15;
   const tx = lon => ((lon - LON_MIN) / (LON_MAX - LON_MIN)) * 100;
   const ty = lat => ((LAT_MAX - lat) / (LAT_MAX - LAT_MIN)) * 100;
 
@@ -681,6 +697,45 @@ function AnalyticsDashboard({ reports }) {
   );
 }
 
+// ── PIE CHART COMPONENT ──────────────────────────────────────────────────
+function PieChart({ reports }) {
+  const counts = {};
+  reports.forEach(r => { counts[r.waste_type] = (counts[r.waste_type] || 0) + 1; });
+  const total = reports.length || 1;
+  
+  let cum = 0;
+  const segments = WASTE.slice(0,6).map(w => {
+    const p = ((counts[w.id] || 0) / total) * 100;
+    cum += p;
+    return { ...w, pct: p, cum };
+  });
+
+  return (
+    <div className="card hoverable" style={{ marginBottom: 24 }}>
+      <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16 }}>📊 Waste Type Breakdown</h2>
+      <div className="pie-chart-container" style={{
+        "--pie-c1": segments[0].color, "--pie-p1": `${segments[0].pct}%`,
+        "--pie-c2": segments[1].color, "--pie-p2": `${segments[1].cum}%`,
+        "--pie-c3": segments[2].color, "--pie-p3": `${segments[2].cum}%`,
+        "--pie-c4": segments[3].color, "--pie-p4": `${segments[3].cum}%`,
+        "--pie-c5": segments[4].color, "--pie-p5": `${segments[4].cum}%`,
+        "--pie-c6": segments[5].color, "--pie-p6": `${segments[5].cum}%`,
+      }}>
+        <div className="pie-chart"></div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {segments.map(s => (
+            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600 }}>
+              <span style={{ width: 12, height: 12, borderRadius: "50%", background: s.color, display: "inline-block" }} />
+              <span style={{ width: 150 }}>{s.label}</span>
+              <span style={{ color: "var(--text-secondary)" }}>{counts[s.id] || 0} ({Math.round(s.pct)}%)</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Success Screen ────────────────────────────────────────────────────────
 function SuccessScreen({ onDone }) {
   const [progress, setProgress] = useState(0);
@@ -727,6 +782,12 @@ export default function UrbanPatch() {
   const [districts, setDistricts] = useState([]);
   const [mlas, setMlas]           = useState([]);
   const [loadingMlas, setLoadingMlas] = useState(true);
+
+  // ── Community state
+  const [messages, setMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [loadingChat, setLoadingChat] = useState(false);
+  const chatBottomRef = useRef(null);
 
   // ── Feed sort
   const [feedSort, setFeedSort] = useState("recent"); // "recent" | "upvotes"
@@ -797,7 +858,14 @@ export default function UrbanPatch() {
   useEffect(() => {
     db.getReports().then(d => { setReports(d || []); setLoadingRep(false); });
     db.getMlas().then(d => { setMlas(d || []); setDistricts([...new Set((d || []).map(m => m.district))].sort()); setLoadingMlas(false); });
+    db.getMessages().then(d => setMessages(d || []));
   }, []);
+
+  useEffect(() => {
+    if (view === "community" && chatBottomRef.current) {
+      chatBottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, view]);
 
   useEffect(() => {
     if (!form.constituency) { setPreview(null); return; }
@@ -870,7 +938,8 @@ export default function UrbanPatch() {
     { id: "dashboard", icon: "📊", label: "Dashboard" },
     { id: "report",    icon: "📸", label: "Report" },
     { id: "feed",      icon: "📋", label: "Reports" },
-    { id: "mine",      icon: "👤", label: "Mine" },
+    { id: "mine",      icon: "👤", label: "My Contributions" },
+    { id: "community", icon: "💬", label: "Community" },
   ];
 
   return (
@@ -958,6 +1027,8 @@ export default function UrbanPatch() {
                 </div>
               ))}
             </div>
+
+            <PieChart reports={reports} />
 
             <div className="dash-grid">
               <div className="card hoverable map-container" style={{ padding: 16 }}>
@@ -1190,7 +1261,7 @@ export default function UrbanPatch() {
                 </div>
                 <span className="badge" style={{ background: "rgba(16,185,129,0.1)", color: "var(--accent-secondary)" }}>Your Identity</span>
               </div>
-              <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em", margin: "0 0 4px 0" }}>My Reports</h1>
+              <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em", margin: "0 0 4px 0" }}>My Contributions</h1>
               <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: 0 }}>
                 {myReports.length === 0 ? "You haven't submitted any reports yet." : `${myReports.length} report${myReports.length !== 1 ? "s" : ""} submitted by you.`}
               </p>
@@ -1208,6 +1279,79 @@ export default function UrbanPatch() {
                 {myReports.map(r => <ReportCard key={r.id} r={r} expanded onClick={() => setSelReport(r)} onUpvote={handleUpvote} voted={votedReports.has(r.id)} />)}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── COMMUNITY ── */}
+        {view === "community" && (
+          <div className="slide-in" style={{ maxWidth: 700, margin: "0 auto" }}>
+            <div style={{ marginBottom: 24 }}>
+              <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em", margin: "0 0 4px 0" }}>Community Discussion</h1>
+              <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: 0 }}>Discuss major problems anonymously with your city.</p>
+            </div>
+            
+            <div className="chat-window">
+              <div className="chat-messages">
+                {messages.length === 0 ? (
+                  <p style={{ textAlign: "center", color: "var(--text-secondary)", marginTop: 40 }}>Be the first to start a discussion!</p>
+                ) : (
+                  messages.map(msg => {
+                    const isMine = msg.author_id === currentUser.id;
+                    return (
+                      <div key={msg.id} className={`chat-bubble ${isMine ? "mine" : "theirs"}`}>
+                        <div className="chat-meta">
+                          <span>{isMine ? "You" : msg.author_alias}</span>
+                          <span style={{ fontWeight: 500 }}>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <div>{msg.content}</div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={chatBottomRef} />
+              </div>
+              
+              <div className="chat-input-area">
+                <input
+                  type="text"
+                  className="inp-field"
+                  placeholder="Share your thoughts..."
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && chatInput.trim() && !loadingChat) {
+                      setLoadingChat(true);
+                      const newMsg = { content: chatInput.trim(), author_alias: currentUser.alias, author_id: currentUser.id };
+                      db.insertMessage(newMsg).then(ok => {
+                        if (ok) {
+                          setChatInput("");
+                          db.getMessages().then(d => setMessages(d || []));
+                        }
+                        setLoadingChat(false);
+                      });
+                    }
+                  }}
+                  style={{ flex: 1, marginBottom: 0 }}
+                />
+                <button
+                  className="btn-primary"
+                  disabled={loadingChat || !chatInput.trim()}
+                  onClick={() => {
+                    setLoadingChat(true);
+                    const newMsg = { content: chatInput.trim(), author_alias: currentUser.alias, author_id: currentUser.id };
+                    db.insertMessage(newMsg).then(ok => {
+                      if (ok) {
+                        setChatInput("");
+                        db.getMessages().then(d => setMessages(d || []));
+                      }
+                      setLoadingChat(false);
+                    });
+                  }}
+                >
+                  Send
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1290,7 +1434,6 @@ export default function UrbanPatch() {
                         else alert("Failed to update status");
                       }}
                       style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 13, fontWeight: 700, color: getStatusColor(selReport.status), background: "var(--bg-surface)", cursor: "pointer" }}
-                      disabled={!isAdmin && selReport.reporter_id !== currentUser.id}
                     >
                       <option value="open">OPEN</option>
                       <option value="working on it">WORKING ON IT</option>

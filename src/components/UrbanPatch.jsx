@@ -486,7 +486,7 @@ function ReportCard({ r, expanded, onClick, onUpvote, voted }) {
   return (
     <div className="report-item stylish-card" onClick={onClick}>
       {r.photo_url ? (
-        <img src={r.photo_url} alt="report" className="report-thumb" loading="lazy" style={{ width: 140, height: 140, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
+        <img src={r.photo_url} alt="report" className="report-thumb" loading="lazy" />
       ) : (
         <div className="report-icon-thumb" style={{ background: w.color + "15", color: w.color, border: `1px solid ${w.color}30` }}>
           {w.icon}
@@ -513,7 +513,7 @@ function ReportCard({ r, expanded, onClick, onUpvote, voted }) {
             <span className="reporter-alias">{r.reporter_alias}</span>
           </div>
         )}
-        <p style={{
+        <p className="description-text" style={{
           fontSize: 14, color: "var(--text-primary)", marginBottom: 10, marginTop: 6, lineHeight: 1.5,
           overflow: "hidden", display: "-webkit-box", WebkitLineClamp: expanded ? "unset" : 2,
           WebkitBoxOrient: "vertical", wordBreak: "break-word",
@@ -1490,7 +1490,7 @@ export default function UrbanPatch() {
               <div className="dash-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))" }}>
                 {sortedFeed.map((r, i) => (
                   <div className="animate-in" key={r.id} style={{ transitionDelay: `${Math.min(i * 0.05, 0.5)}s` }}>
-                    <ReportCard r={r} expanded onClick={() => setSelReport(r)} onUpvote={handleUpvote} voted={votedReports.has(r.id)} />
+                    <ReportCard r={r} expanded={false} onClick={() => setSelReport(r)} onUpvote={handleUpvote} voted={votedReports.has(r.id)} />
                   </div>
                 ))}
               </div>

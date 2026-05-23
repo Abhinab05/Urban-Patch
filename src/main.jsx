@@ -37,11 +37,11 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 
 async function boot() {
   try {
-    const { default: Jabor } = await import("../Jabor.jsx");
+    const { default: UrbanPatch } = await import("../UrbanPatch.jsx");
     root.render(
       <React.StrictMode>
         <ErrorBoundary>
-          <Jabor />
+          <UrbanPatch />
         </ErrorBoundary>
       </React.StrictMode>
     );

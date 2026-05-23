@@ -57,7 +57,7 @@ body {
 .top-nav {
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
-  padding: 12px 24px;
+  padding: 16px 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -68,45 +68,45 @@ body {
 }
 
 .logo {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 800;
   color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   letter-spacing: -0.02em;
 }
 
 .logo-icon {
   background: var(--accent-primary);
   color: white;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  font-size: 16px;
+  border-radius: 10px;
+  font-size: 20px;
 }
 
 .nav-links {
   display: flex;
-  gap: 8px;
+  gap: 12px;
 }
 
 .nav-item {
   background: transparent;
   border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: 10px 20px;
+  border-radius: 10px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .nav-item:hover {
@@ -523,10 +523,20 @@ ul, li { margin: 0; padding: 0; list-style: none; }
     font-size: 32px;
   }
   .top-nav {
-    padding: 12px 16px;
+    padding: 14px 20px;
   }
   .logo {
-    font-size: 20px;
+    font-size: 24px;
+  }
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+    border-radius: 8px;
+  }
+  .nav-item {
+    padding: 8px 12px;
+    font-size: 14px;
   }
   .hide-mobile {
     display: none;

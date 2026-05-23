@@ -320,6 +320,16 @@ function AssamMap({ reports }) {
 // ── REPORT CARD — with thumbnail + MLA/MP on separate lines
 // Function definition
 
+function getStatusColor(status) {
+  switch (status?.toLowerCase()) {
+    case 'working on it': return '#f59e0b';
+    case 'resolved': return '#10b981';
+    case 'ignored': return '#ef4444';
+    case 'open':
+    default: return '#3b82f6';
+  }
+}
+
 // ── REPORT CARD — SaaS Style
 function ReportCard({ r, expanded, onClick }) {
   const w = WASTE.find(t => t.id === r.waste_type) || WASTE[0];
@@ -340,6 +350,9 @@ function ReportCard({ r, expanded, onClick }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
           <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-primary)" }}>{r.constituency}</span>
           <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>• {r.district}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: getStatusColor(r.status) + "20", color: getStatusColor(r.status) }}>
+            {(r.status || "OPEN").toUpperCase()}
+          </span>
           <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}><TimeAgo date={r.created_at} /></span>
         </div>
         {(r.area || r.landmark) && (
@@ -713,9 +726,9 @@ export default function UrbanPatch() {
           <div className="slide-in">
             {/* Hero Section */}
             <div className="hero-section">
-              <h1 className="hero-title">Hold them <span style={{ color: "var(--accent-primary)" }}>accountable.</span></h1>
+              <h1 className="hero-title">Drive real <span style={{ color: "var(--accent-primary)" }}>change.</span></h1>
               <p className="hero-subtitle">
-                Report garbage dumps across your city. Every report automatically tags the responsible MLA and MP, creating a permanent public record.
+                Track and report civic issues in your neighborhood. We instantly notify the responsible MLA and MP, ensuring transparent and lasting accountability.
               </p>
               <div style={{ display: "flex", justifyContent: "center", gap: 16 }}>
                 <button className="btn-primary" onClick={goToReport}>📸 Report Garbage</button>
@@ -1008,7 +1021,7 @@ export default function UrbanPatch() {
                           alert("Failed to update status");
                         }
                       }}
-                      style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 13, fontWeight: 700, color: selReport.status === "open" ? "var(--danger)" : "var(--accent-secondary)", background: "var(--bg-surface)", cursor: "pointer" }}
+                      style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 13, fontWeight: 700, color: getStatusColor(selReport.status), background: "var(--bg-surface)", cursor: "pointer" }}
                     >
                       <option value="open">OPEN</option>
                       <option value="working on it">WORKING ON IT</option>

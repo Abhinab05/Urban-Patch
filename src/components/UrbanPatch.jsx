@@ -227,9 +227,12 @@ function getStatusColor(status) {
 
 // ── Assam SVG Map ────────────────────────────────────────────────────────
 
+// ── REAL ASSAM MAP — uses the actual Assam district map as background
+// with animated SVG red pins for reports
+// Function definition
 function AssamMap({ reports }) {
-  const LON_MIN = 89.68, LON_MAX = 96.01;
-  const LAT_MIN = 24.13, LAT_MAX = 27.96;
+  const LON_MIN = 89.55, LON_MAX = 96.25;
+  const LAT_MIN = 23.95, LAT_MAX = 28.25;
   const tx = lon => ((lon - LON_MIN) / (LON_MAX - LON_MIN)) * 100;
   const ty = lat => ((LAT_MAX - lat) / (LAT_MAX - LAT_MIN)) * 100;
 
@@ -242,93 +245,146 @@ function AssamMap({ reports }) {
     [93.60,26.55],[92.35,24.87],[92.85,24.85],[94.65,27.00],
   ];
 
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+// React state variable
+  const [zoom,     setZoom]     = useState(1);
+// React state variable
+  const [pan,      setPan]      = useState({ x: 0, y: 0 });
+// React state variable
   const [dragging, setDragging] = useState(false);
-  const dragStart = useRef(null);
-  const lastPan = useRef({ x: 0, y: 0 });
+  const dragStart    = useRef(null);
+  const lastPan      = useRef({ x: 0, y: 0 });
+  const lastDist     = useRef(null);
   const containerRef = useRef(null);
 
   const MIN_Z = 1, MAX_Z = 5;
   const clamp = z => Math.min(MAX_Z, Math.max(MIN_Z, z));
 
-  const onWheel = e => { e.preventDefault(); setZoom(z => clamp(z + (e.deltaY < 0 ? 0.15 : -0.15))); };
+  // Scroll wheel zoom
+  const onWheel = e => {
+    e.preventDefault();
+    setZoom(z => clamp(z + (e.deltaY < 0 ? 0.15 : -0.15)));
+  };
+
+  // Mouse drag to pan
   const onMD = e => { if (zoom <= 1) return; setDragging(true); dragStart.current = { x: e.clientX, y: e.clientY }; lastPan.current = { ...pan }; };
   const onMM = e => {
     if (!dragging || !dragStart.current) return;
-    const dx = e.clientX - dragStart.current.x;
-    const dy = e.clientY - dragStart.current.y;
-    setPan({ x: lastPan.current.x + dx, y: lastPan.current.y + dy });
+    setPan({ x: lastPan.current.x + e.clientX - dragStart.current.x, y: lastPan.current.y + e.clientY - dragStart.current.y });
   };
-  const onMU = () => { setDragging(false); dragStart.current = null; };
-  useEffect(() => { const el = containerRef.current; if (!el) return; el.addEventListener("wheel", onWheel, { passive: false }); return () => el.removeEventListener("wheel", onWheel); }, [zoom]);
+  const onMU = () => setDragging(false);
 
+  // Touch pinch + drag
+  const onTS = e => {
+    if (e.touches.length === 2) {
+      lastDist.current = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    } else if (e.touches.length === 1 && zoom > 1) {
+      dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      lastPan.current = { ...pan };
+    }
+  };
+  const onTM = e => {
+    e.preventDefault();
+    if (e.touches.length === 2 && lastDist.current) {
+      const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      setZoom(z => clamp(z + (d - lastDist.current) * 0.01));
+      lastDist.current = d;
+    } else if (e.touches.length === 1 && dragStart.current && zoom > 1) {
+      setPan({ x: lastPan.current.x + e.touches[0].clientX - dragStart.current.x, y: lastPan.current.y + e.touches[0].clientY - dragStart.current.y });
+    }
+  };
+  const onTE = () => { lastDist.current = null; dragStart.current = null; };
+
+// React lifecycle hook
+  useEffect(() => { if (zoom <= 1) setPan({ x: 0, y: 0 }); }, [zoom]);
+
+// React lifecycle hook
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.addEventListener("wheel", onWheel, { passive: false });
+// Returning JSX/UI content
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  const reset = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
+
+// Returning JSX/UI content
   return (
-    <div className="card" style={{ padding: 24, background: "var(--bg-main)", borderRadius: 20 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <h2 style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, color: "var(--text-primary)", margin: 0 }}>
-          <span style={{ fontSize: 20 }}>🗺️</span> Live Report Map
-        </h2>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--accent-primary)", fontWeight: 600 }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent-primary)", animation: "pulse 2s infinite" }}></div>
-          {reports.length} reports
-        </div>
+    <div style={{ position: "relative", width: "100%", borderRadius: 12, overflow: "hidden", background: "var(--bg-main)", userSelect: "none" }}>
+      {/* +/- zoom buttons */}
+      <div style={{ position: "absolute", top: 8, left: 8, zIndex: 10, display: "flex", flexDirection: "column", gap: 4 }}>
+        {[{label:"+", fn:()=>setZoom(z=>clamp(z+0.5))}, {label:"−", fn:()=>setZoom(z=>clamp(z-0.5))}].map(b => (
+          <button key={b.label} onClick={b.fn} style={{ width:28, height:28, borderRadius:7, border:"1px solid var(--border-color)", background:"var(--bg-surface)", color:"var(--accent-primary)", fontSize:18, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>{b.label}</button>
+        ))}
+        {zoom > 1 && (
+          <button onClick={reset} style={{ width:28, height:28, borderRadius:7, border:"1px solid var(--border-color)", background:"rgba(239, 68, 68, 0.1)", color:"var(--accent-primary)", fontSize:11, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }} title="Reset">↺</button>
+        )}
       </div>
 
-      <div ref={containerRef} style={{ width: "100%", aspectRatio: "4/3", background: "linear-gradient(135deg,#e8f4fd,#f0f9f0)", borderRadius: 16, overflow: "hidden", cursor: zoom > 1 ? (dragging ? "grabbing" : "grab") : "default", userSelect: "none", position: "relative", border: "1px solid var(--border-color)" }} onMouseDown={onMD} onMouseMove={onMM} onMouseUp={onMU} onMouseLeave={onMU}>
-        
-        {/* Zoom Controls Overlay */}
-        <div style={{ position: "absolute", top: 16, left: 16, display: "flex", flexDirection: "column", gap: 8, zIndex: 10 }}>
-          <button onClick={() => setZoom(z => clamp(z + 0.5))} style={{ width: 40, height: 40, borderRadius: 12, background: "#fff", border: "1px solid var(--border-color)", cursor: "pointer", fontWeight: 800, fontSize: 20, color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "var(--shadow-sm)" }}>+</button>
-          <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} style={{ width: 40, height: 40, borderRadius: 12, background: "#fff", border: "1px solid var(--border-color)", cursor: "pointer", fontWeight: 800, fontSize: 20, color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "var(--shadow-sm)" }}>-</button>
-        </div>
+      {/* Zoom level / report count badge */}
+      <div style={{ position:"absolute", top:8, right:8, zIndex:10, background:"var(--accent-primary)ee", color:"#fff", borderRadius:8, padding:"3px 8px", fontSize:10, fontWeight:700 }}>
+        {zoom > 1 ? `${zoom.toFixed(1)}×` : reports.length === 0 ? "No reports" : `${reports.length} report${reports.length!==1?"s":""}`}
+      </div>
 
-        {/* Floating Badge Overlay */}
-        <div style={{ position: "absolute", top: 16, right: 16, background: "var(--accent-primary)", color: "#fff", padding: "6px 14px", borderRadius: 20, fontWeight: 700, fontSize: 13, boxShadow: "0 4px 12px rgba(0,0,0,0.15)", zIndex: 10 }}>
-          {reports.length} reports
-        </div>
+      {/* Hint */}
+      <div style={{ position:"absolute", bottom:6, left:"50%", transform:"translateX(-50%)", zIndex:10, fontSize:9, color:"var(--text-secondary)", background:"var(--bg-surface)cc", borderRadius:4, padding:"2px 6px", whiteSpace:"nowrap", pointerEvents:"none" }}>
+        {zoom > 1 ? "drag to pan · ↺ to reset" : "scroll or + to zoom · pinch on mobile"}
+      </div>
 
-        {/* Bottom Instruction Pill */}
-        <div style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", background: "rgba(255,255,255,0.9)", backdropFilter: "blur(4px)", padding: "6px 16px", borderRadius: 20, fontSize: 12, color: "var(--text-secondary)", fontWeight: 600, boxShadow: "var(--shadow-sm)", pointerEvents: "none", zIndex: 10 }}>
-          scroll or + to zoom • pinch on mobile
-        </div>
-
-        <svg viewBox="0 0 100 50" style={{ width: "100%", height: "100%", transform: `scale(${zoom}) translate(${pan.x/10}px,${pan.y/10}px)`, transformOrigin: "center center", transition: dragging ? "none" : "transform 0.1s" }} preserveAspectRatio="xMidYMid meet">
-          <image href={ASSAM_MAP_SRC} width="100" height="50" opacity="0.5" preserveAspectRatio="none" style={{ filter: "sepia(1) hue-rotate(180deg) saturate(0.5)" }} />
-          {gps.map((r, i) => {
-            const cx = tx(parseFloat(r.lng)), cy = ty(parseFloat(r.lat));
-            const w = WASTE.find(t => t.id === r.waste_type), col = w?.color || "#9CA3AF";
+      {/* Zoomable inner */}
+      <div
+        ref={containerRef}
+        onMouseDown={onMD} onMouseMove={onMM} onMouseUp={onMU} onMouseLeave={onMU}
+        onTouchStart={onTS} onTouchMove={onTM} onTouchEnd={onTE}
+        style={{
+          width: "100%", aspectRatio: "1270/920",
+          cursor: zoom > 1 ? (dragging ? "grabbing" : "grab") : "default",
+          transform: `scale(${zoom}) translate(${pan.x/zoom}px, ${pan.y/zoom}px)`,
+          transformOrigin: "center center",
+          transition: dragging ? "none" : "transform 0.12s ease",
+          willChange: "transform",
+        }}
+      >
+        <img src={ASSAM_MAP_SRC} alt="Assam map" draggable={false}
+          style={{ width:"100%", height:"100%", objectFit:"contain", display:"block", pointerEvents:"none" }} />
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none"
+          style={{ position:"absolute", inset:0, width:"100%", height:"100%", overflow:"visible", pointerEvents:"none" }}>
+          <defs>
+            <style>{`
+              @keyframes pinbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+              @keyframes pinring{0%{r:2;opacity:.8}100%{r:6;opacity:0}}
+              .pin-g{animation:pinbob 2s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
+              .pin-ring{animation:pinring 1.8s ease-out infinite}
+            `}</style>
+          </defs>
+          {gps.map((r,i) => {
+            const w=WASTE.find(t=>t.id===r.waste_type), cx=tx(r.lng), cy=ty(r.lat), col=w?.color||"#EF4444";
+// Returning JSX/UI content
             return (
-              <g key={`g${i}`} className="pin-g" style={{ animationDelay: `${i * 0.05}s` }}>
-                <circle cx={cx} cy={cy - 2.8} r="2.5" fill={col} stroke="#fff" strokeWidth="0.6" opacity={0.9} style={{ filter: "drop-shadow(0 2px 2px rgba(0,0,0,0.3))" }}/>
-                <line x1={cx} y1={cy - 0.6} x2={cx} y2={cy} stroke={col} strokeWidth="1" strokeLinecap="round"/>
+              <g key={i} className="pin-g" style={{animationDelay:`${i*.25}s`}}>
+                <circle cx={cx} cy={cy} r="2" fill="none" stroke={col} strokeWidth="0.4" className="pin-ring" style={{animationDelay:`${i*.25}s`}}/>
+                <circle cx={cx} cy={cy-3.5} r="2.2" fill={col} stroke="#fff" strokeWidth="0.5"/>
+                <line x1={cx} y1={cy-1.3} x2={cx} y2={cy} stroke={col} strokeWidth="0.8" strokeLinecap="round"/>
+                <circle cx={cx} cy={cy-3.5} r="0.8" fill="#fff" opacity="0.8"/>
               </g>
             );
           })}
-          {nogps.map((r, i) => {
-            const w = WASTE.find(t => t.id === r.waste_type), city = CITIES[i % CITIES.length], cx = tx(city[0]), cy = ty(city[1]), col = w?.color || "#9CA3AF";
+          {nogps.map((r,i) => {
+            const w=WASTE.find(t=>t.id===r.waste_type), city=CITIES[i%CITIES.length], cx=tx(city[0]), cy=ty(city[1]), col=w?.color||"#EF4444";
+// Returning JSX/UI content
             return (
-              <g key={`n${i}`} className="pin-g" style={{ animationDelay: `${i * 0.1}s`, opacity: 0.75 }}>
-                <circle cx={cx} cy={cy - 2.8} r="2" fill={col} stroke="#fff" strokeWidth="0.5" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))" }}/>
-                <line x1={cx} y1={cy - 1} x2={cx} y2={cy} stroke={col} strokeWidth="0.8" strokeLinecap="round"/>
+              <g key={`n${i}`} className="pin-g" style={{animationDelay:`${i*.35}s`,opacity:0.65}}>
+                <circle cx={cx} cy={cy-2.8} r="1.8" fill={col} stroke="#fff" strokeWidth="0.4"/>
+                <line x1={cx} y1={cy-1} x2={cx} y2={cy} stroke={col} strokeWidth="0.7" strokeLinecap="round"/>
               </g>
             );
           })}
         </svg>
       </div>
-
-      {/* Map Legend */}
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 24, padding: "0 8px" }}>
-        {WASTE.map(w => (
-          <div key={w.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>
-            <div style={{ width: 12, height: 12, borderRadius: "50%", background: w.color }}></div>
-            {w.label}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
+
 
 
 function ReportCard({ r, expanded, onClick, onUpvote, voted }) {

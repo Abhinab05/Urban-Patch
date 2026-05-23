@@ -221,7 +221,7 @@ const WASTE = [
   { id: "construction", label: "Construction Debris", icon: "\u{1F9F1}",       color: "#D97706" },
   { id: "organic",      label: "Organic / Food",      icon: "\u{1F342}",       color: "#10B981" },
   { id: "water",        label: "Water Body Dump",     icon: "\u{1F4A7}",       color: "#0EA5E9" },
-  { id: "medical",      label: "Medical / Hazardous", icon: "\u26A0\uFE0F",    color: "#EF4444" },
+  { id: "medical",      label: "Medical / Hazardous", icon: "\u26A0\uFE0F",    color: "#8B5CF6" },
 ];
 
 const PARTY_CLR = {

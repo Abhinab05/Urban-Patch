@@ -279,6 +279,32 @@ function AssamMap({ reports }) {
 
   const gps   = reports.filter(r => r.lat && r.lng);
   const nogps = reports.filter(r => !r.lat || !r.lng);
+  
+  const DISTRICT_COORDS = {
+    "Kamrup Metropolitan": [91.73, 26.14],
+    "Kamrup": [91.33, 26.32],
+    "Dibrugarh": [94.91, 27.48],
+    "Jorhat": [94.20, 26.75],
+    "Nagaon": [92.68, 26.35],
+    "Cachar": [92.80, 24.83],
+    "Sonitpur": [92.79, 26.63],
+    "Tinsukia": [95.35, 27.49],
+    "Barpeta": [90.01, 26.32],
+    "Bongaigaon": [90.56, 26.47],
+    "Darrang": [92.03, 26.43],
+    "Dhemaji": [94.55, 27.48],
+    "Dhubri": [89.97, 26.02],
+    "Goalpara": [90.62, 26.17],
+    "Golaghat": [93.97, 26.51],
+    "Hailakandi": [92.56, 24.68],
+    "Karimganj": [92.35, 24.87],
+    "Lakhimpur": [94.10, 27.23],
+    "Morigaon": [92.00, 26.25],
+    "Nalbari": [91.44, 26.45],
+    "Sivasagar": [94.63, 26.98],
+    "Karbi Anglong": [93.44, 26.15]
+  };
+
   const CITIES = [
     [91.74,26.18],[94.91,27.48],[93.97,26.75],[92.68,26.35],
     [91.00,26.32],[90.27,26.40],[89.97,26.02],[94.21,26.74],
@@ -399,8 +425,18 @@ function AssamMap({ reports }) {
             `}</style>
           </defs>
           {gps.map((r,i) => {
-            const w=WASTE.find(t=>t.id===r.waste_type), cx=tx(r.lng), cy=ty(r.lat), col=w?.color||"#EF4444";
-// Returning JSX/UI content
+            const w=WASTE.find(t=>t.id===r.waste_type);
+            const col=w?.color||"#EF4444";
+            
+            // Jitter algorithm: spiral distribution based on ID/index so they don't perfectly overlap
+            const rJit = (i % 5) * 0.8;
+            const aJit = i * 2.4; // Golden angle approx
+            const jx = Math.cos(aJit) * rJit;
+            const jy = Math.sin(aJit) * rJit;
+            
+            const cx = tx(r.lng) + jx;
+            const cy = ty(r.lat) + jy;
+
             return (
               <g key={i} className="pin-g" style={{animationDelay:`${i*.25}s`}}>
                 <circle cx={cx} cy={cy} r="2" fill="none" stroke={col} strokeWidth="0.4" className="pin-ring" style={{animationDelay:`${i*.25}s`}}/>
@@ -411,8 +447,23 @@ function AssamMap({ reports }) {
             );
           })}
           {nogps.map((r,i) => {
-            const w=WASTE.find(t=>t.id===r.waste_type), city=CITIES[i%CITIES.length], cx=tx(city[0]), cy=ty(city[1]), col=w?.color||"#EF4444";
-// Returning JSX/UI content
+            const w=WASTE.find(t=>t.id===r.waste_type);
+            const col=w?.color||"#EF4444";
+            
+            // Use district coordinates if available, fallback to CITIES
+            const distLoc = DISTRICT_COORDS[r.district];
+            const baseLng = distLoc ? distLoc[0] : CITIES[i%CITIES.length][0];
+            const baseLat = distLoc ? distLoc[1] : CITIES[i%CITIES.length][1];
+            
+            // Jitter algorithm: spread out reports from the same district
+            const rJit = (i % 6) * 1.0;
+            const aJit = i * 2.4; 
+            const jx = Math.cos(aJit) * rJit;
+            const jy = Math.sin(aJit) * rJit;
+            
+            const cx = tx(baseLng) + jx;
+            const cy = ty(baseLat) + jy;
+
             return (
               <g key={`n${i}`} className="pin-g" style={{animationDelay:`${i*.35}s`,opacity:0.65}}>
                 <circle cx={cx} cy={cy-2.8} r="1.8" fill={col} stroke="#fff" strokeWidth="0.4"/>

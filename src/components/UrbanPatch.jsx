@@ -892,6 +892,24 @@ function QuoteCarousel() {
   );
 }
 
+function SuccessScreen({ onDone }) {
+  return (
+    <div className="slide-in" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 400, textAlign: "center", padding: 40 }}>
+      <div style={{ fontSize: 72, marginBottom: 24, animation: "pop-in 0.5s cubic-bezier(0.16, 1, 0.3, 1)" }}>✅</div>
+      <h2 style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)", marginBottom: 12, letterSpacing: "-0.02em" }}>Report Submitted!</h2>
+      <p style={{ color: "var(--text-secondary)", fontSize: 16, lineHeight: 1.6, marginBottom: 32, maxWidth: 360 }}>
+        Your report has been recorded and published. The MLA &amp; MP for this constituency have been automatically tagged.
+      </p>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+        <button className="btn-primary" onClick={onDone} style={{ padding: "14px 28px", fontSize: 16 }}>
+          🏠 Back to Dashboard
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 export default function UrbanPatch() {
   // ── User identity
   const [currentUser]  = useState(() => getOrCreateUser());
@@ -934,7 +952,8 @@ export default function UrbanPatch() {
   // ── Reverse geocode helper
   const reverseGeocode = async (lat, lng) => {
     try {
-      const res  = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+      const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 5000);
+      const res  = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`, { signal: controller.signal }); clearTimeout(timer);
       const data = await res.json();
       const rawDistrict = (data.principalSubdivision || data.city || "").toLowerCase();
       let matchedDistrict = "";
@@ -968,18 +987,9 @@ export default function UrbanPatch() {
     navigator.geolocation.getCurrentPosition(
       pos => { const { latitude, longitude } = pos.coords; setPosition([latitude, longitude]); reverseGeocode(latitude, longitude); setLoadingLoc(false); },
       err => { console.error(err); alert(`Location failed: ${err.message}`); setLoadingLoc(false); },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
     );
   };
-
-  function DraggableMarker() {
-    const map = useMap();
-    const markerRef = useRef(null);
-    useEffect(() => { if (position) map.flyTo(position, 15); }, [position, map]);
-    useMapEvents({ click(e) { const newPos = [e.latlng.lat, e.latlng.lng]; setPosition(newPos); reverseGeocode(newPos[0], newPos[1]); } });
-    const eventHandlers = { dragend() { const m = markerRef.current; if (m) { const newPos = [m.getLatLng().lat, m.getLatLng().lng]; setPosition(newPos); reverseGeocode(newPos[0], newPos[1]); } } };
-    return position === null ? null : <Marker draggable={true} eventHandlers={eventHandlers} position={position} ref={markerRef} />;
-  }
 
   // ── Data fetching
   useEffect(() => {
@@ -1441,7 +1451,7 @@ export default function UrbanPatch() {
               <p style={{ color: "var(--text-secondary)", fontSize: 15, margin: 0 }}>Discuss major problems anonymously with your city.</p>
             </div>
             
-            <div className="chat-window animate-in" style={{ position: "relative", zIndex: 10 }}>
+            <div className="chat-window animate-in" style={{ position: "relative", zIndex: 10, background: "linear-gradient(135deg, #1e293b, #1a2744)", borderRadius: 20, color: "#f1f5f9" }}>
               
               <div className="chat-messages" style={{ position: "relative", zIndex: 10 }}>
                 {messages.length === 0 ? (

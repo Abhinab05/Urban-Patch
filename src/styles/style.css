@@ -1006,7 +1006,7 @@ ul, li { margin: 0; padding: 0; list-style: none; }
 
 /* Community Forum CSS */
 .chat-window {
-  background: var(--bg-main);
+  background: linear-gradient(135deg, #1e293b, #1a2744);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   display: flex;
@@ -1234,7 +1234,7 @@ ul, li { margin: 0; padding: 0; list-style: none; }
   min-height: calc(100vh - 200px);
 }
 
-/* /* .community-wrapper .premium-bg-image { background-image: url('/bg_community.png'); opacity: 0.25; } */ */
+/* /* .community-wrapper .premium-bg-image { background-image: url('/bg_community.png'); opacity: 0.25; }
 .feed-wrapper .premium-bg-image { background-image: url('/bg_feed.png'); opacity: 0.25; }
 
 /* Quote Carousel Upgrade */

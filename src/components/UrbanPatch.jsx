@@ -231,8 +231,8 @@ function getStatusColor(status) {
 // with animated SVG red pins for reports
 // Function definition
 function AssamMap({ reports }) {
-  const LON_MIN = 89.68, LON_MAX = 96.01;
-  const LAT_MIN = 24.13, LAT_MAX = 27.96;
+  const LON_MIN = 89.55, LON_MAX = 96.25;
+  const LAT_MIN = 23.95, LAT_MAX = 28.25;
   const tx = lon => ((lon - LON_MIN) / (LON_MAX - LON_MIN)) * 100;
   const ty = lat => ((LAT_MAX - lat) / (LAT_MAX - LAT_MIN)) * 100;
 

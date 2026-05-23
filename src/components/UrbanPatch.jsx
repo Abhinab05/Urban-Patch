@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef } from "react";
 import "../styles/style.css";
 
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents, Popup } from "react-leaflet";
 import L from "leaflet";
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -227,477 +227,36 @@ function getStatusColor(status) {
 
 // ── Assam SVG Map ────────────────────────────────────────────────────────
 function AssamMap({ reports }) {
-  const LON_MIN = 89.68, LON_MAX = 96.01;
-  const LAT_MIN = 24.13, LAT_MAX = 27.96;
-  const tx = lon => ((lon - LON_MIN) / (LON_MAX - LON_MIN)) * 100;
-  const ty = lat => ((LAT_MAX - lat) / (LAT_MAX - LAT_MIN)) * 100;
-
-  const gps   = reports.filter(r => r.lat && r.lng);
-  const nogps = reports.filter(r => !r.lat || !r.lng);
-  const CITIES = [
-    [91.74,26.18],[94.91,27.48],[93.97,26.75],[92.68,26.35],
-    [91.00,26.32],[90.27,26.40],[89.97,26.02],[94.21,26.74],
-    [95.37,27.49],[92.80,26.68],[91.44,26.45],[90.55,26.48],
-    [93.60,26.55],[92.35,24.87],[92.85,24.85],[94.65,27.00],
-  ];
-
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [dragging, setDragging] = useState(false);
-  const dragStart = useRef(null);
-  const lastPan = useRef({ x: 0, y: 0 });
-  const containerRef = useRef(null);
-
-  const MIN_Z = 1, MAX_Z = 5;
-  const clamp = z => Math.min(MAX_Z, Math.max(MIN_Z, z));
-
-  const onWheel = e => { e.preventDefault(); setZoom(z => clamp(z + (e.deltaY < 0 ? 0.15 : -0.15))); };
-  const onMD = e => { if (zoom <= 1) return; setDragging(true); dragStart.current = { x: e.clientX, y: e.clientY }; lastPan.current = { ...pan }; };
-  const onMM = e => {
-    if (!dragging || !dragStart.current) return;
-    const dx = e.clientX - dragStart.current.x;
-    const dy = e.clientY - dragStart.current.y;
-    setPan({ x: lastPan.current.x + dx, y: lastPan.current.y + dy });
-  };
-  const onMU = () => { setDragging(false); dragStart.current = null; };
-  useEffect(() => { const el = containerRef.current; if (!el) return; el.addEventListener("wheel", onWheel, { passive: false }); return () => el.removeEventListener("wheel", onWheel); }, [zoom]);
-
-  const districtCounts = {};
-  reports.forEach(r => { districtCounts[r.district] = (districtCounts[r.district] || 0) + 1; });
-  const maxCount = Math.max(1, ...Object.values(districtCounts));
-
+  const gps = reports.filter(r => r.lat && r.lng);
+  
   return (
-    <div ref={containerRef} style={{ width: "100%", aspectRatio: "2/1", background: "linear-gradient(135deg,#e8f4fd,#f0f9f0)", borderRadius: 12, overflow: "hidden", cursor: zoom > 1 ? (dragging ? "grabbing" : "grab") : "default", userSelect: "none", position: "relative" }} onMouseDown={onMD} onMouseMove={onMM} onMouseUp={onMU} onMouseLeave={onMU}>
-      <svg viewBox="0 0 100 50" style={{ width: "100%", height: "100%", transform: `scale(${zoom}) translate(${pan.x/10}px,${pan.y/10}px)`, transformOrigin: "center center", transition: dragging ? "none" : "transform 0.1s" }} preserveAspectRatio="xMidYMid meet">
-        <rect width={100} height={50} fill="#dbeafe" opacity={0.3} rx={2}/>
-        <text x={50} y={25} textAnchor="middle" fontSize={6} fill="#94a3b8" fontWeight={700} opacity={0.5}>ASSAM</text>
-        <image href={ASSAM_MAP_SRC} width="100" height="50" opacity="0.3" preserveAspectRatio="none"/>
-        {gps.map((r, i) => {
-          const cx = tx(r.lng), cy = ty(r.lat);
-          const w = WASTE.find(t => t.id === r.waste_type), col = w?.color || "#EF4444";
-          return (
-            <g key={`g${i}`} className="pin-g" style={{ animationDelay: `${i * 0.12}s` }}>
-              <circle cx={cx} cy={cy - 2.8} r="2.2" fill={col} stroke="#fff" strokeWidth="0.5" opacity={0.9}/>
-              <line x1={cx} y1={cy - 0.6} x2={cx} y2={cy} stroke={col} strokeWidth="0.8" strokeLinecap="round"/>
-            </g>
-          );
-        })}
-        {nogps.map((r, i) => {
-          const w = WASTE.find(t => t.id === r.waste_type), city = CITIES[i % CITIES.length], cx = tx(city[0]), cy = ty(city[1]), col = w?.color || "#EF4444";
-          return (
-            <g key={`n${i}`} className="pin-g" style={{ animationDelay: `${i * 0.35}s`, opacity: 0.65 }}>
-              <circle cx={cx} cy={cy - 2.8} r="1.8" fill={col} stroke="#fff" strokeWidth="0.4"/>
-              <line x1={cx} y1={cy - 1} x2={cx} y2={cy} stroke={col} strokeWidth="0.7" strokeLinecap="round"/>
-            </g>
-          );
-        })}
-      </svg>
-      <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 4 }}>
-        <button onClick={() => setZoom(z => clamp(z + 0.5))} style={{ width: 26, height: 26, borderRadius: 6, background: "#fff", border: "1px solid var(--border-color)", cursor: "pointer", fontWeight: 800, fontSize: 14 }}>+</button>
-        <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} style={{ width: 26, height: 26, borderRadius: 6, background: "#fff", border: "1px solid var(--border-color)", cursor: "pointer", fontSize: 11 }}>↺</button>
-      </div>
-    </div>
-  );
-}
-
-// ── Report Card ───────────────────────────────────────────────────────────
-function ReportCard({ r, expanded, onClick, onUpvote, voted }) {
-  const w = WASTE.find(t => t.id === r.waste_type) || WASTE[0];
-  const isHighPriority = (r.upvotes || 0) >= 10;
-
-  return (
-    <div className="report-item" onClick={onClick}>
-      {r.photo_url ? (
-        <img src={r.photo_url} alt="report" className="report-thumb" />
-      ) : (
-        <div className="report-icon-thumb" style={{ background: w.color + "15", color: w.color, border: `1px solid ${w.color}30` }}>
-          {w.icon}
-        </div>
-      )}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
-          <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-primary)" }}>{r.constituency}</span>
-          <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>• {r.district}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: getStatusColor(r.status) + "20", color: getStatusColor(r.status) }}>
-            {(r.status || "OPEN").toUpperCase()}
-          </span>
-          {isHighPriority && <span className="priority-badge">🔥 HIGH PRIORITY</span>}
-          <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}><TimeAgo date={r.created_at} /></span>
-        </div>
-        {(r.area || r.landmark) && (
-          <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            📍 {[r.area, r.landmark].filter(Boolean).join(" • ")}
-          </p>
-        )}
-        {r.reporter_alias && (
-          <div className="reporter-line">
-            <span>👤 Reported by</span>
-            <span className="reporter-alias">{r.reporter_alias}</span>
-          </div>
-        )}
-        <p style={{
-          fontSize: 14, color: "var(--text-primary)", marginBottom: 10, marginTop: 6, lineHeight: 1.5,
-          overflow: "hidden", display: "-webkit-box", WebkitLineClamp: expanded ? "unset" : 2,
-          WebkitBoxOrient: "vertical", wordBreak: "break-word",
-        }}>{r.description}</p>
-
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-main)", padding: "4px 8px", borderRadius: 6 }}>
-              <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 600 }}>MLA:</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{r.mla_name}</span>
-              <Badge party={r.mla_party} />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-main)", padding: "4px 8px", borderRadius: 6 }}>
-              <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 600 }}>MP:</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{r.mp_name}</span>
-              <Badge party={r.mp_party} />
-            </div>
-          </div>
-          <button
-            className={`upvote-btn ${voted ? "voted" : ""}`}
-            onClick={e => { e.stopPropagation(); onUpvote && onUpvote(r.id); }}
-            title={voted ? "You've already flagged this" : "I see this issue too"}
-          >
-            <span className="eye">👀</span>
-            {voted ? "Flagged" : "I see this too"} · {r.upvotes || 0}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Shame Board ───────────────────────────────────────────────────────────
-function ShameBoard({ reports }) {
-  const [tab, setTab] = useState("mla");
-  const medals = ["🥇", "🥈", "🥉"];
-  const shame = count => {
-    if (count >= 20) return { label: "⚠️ CRITICAL", bg: "#FEE2E2", color: "#DC2626" };
-    if (count >= 10) return { label: "🔴 SERIOUS",  bg: "#FEE2E2", color: "#EF4444" };
-    if (count >= 5)  return { label: "🟠 MODERATE", bg: "#FEF3C7", color: "#D97706" };
-    return               { label: "🟡 LOW",       bg: "#ECFDF5", color: "#059669" };
-  };
-
-  const mlaMap = {};
-  reports.forEach(r => {
-    const k = `${r.mla_name}||${r.mla_party}||${r.constituency}||${r.district}`;
-    if (!mlaMap[k]) mlaMap[k] = { name: r.mla_name, party: r.mla_party, constituency: r.constituency, district: r.district, count: 0, latest: r.created_at };
-    mlaMap[k].count++;
-    if (new Date(r.created_at) > new Date(mlaMap[k].latest)) mlaMap[k].latest = r.created_at;
-  });
-  const mpMap = {};
-  reports.forEach(r => {
-    const k = `${r.mp_name}||${r.mp_party}||${r.lok_sabha_seat}`;
-    if (!mpMap[k]) mpMap[k] = { name: r.mp_name, party: r.mp_party, seat: r.lok_sabha_seat, count: 0, areas: new Set(), latest: r.created_at };
-    mpMap[k].count++;
-    mpMap[k].areas.add(r.constituency);
-    if (new Date(r.created_at) > new Date(mpMap[k].latest)) mpMap[k].latest = r.created_at;
-  });
-
-  const ranking = tab === "mla"
-    ? Object.values(mlaMap).filter(p => p.count >= 1).sort((a, b) => b.count - a.count).slice(0, 10)
-    : Object.values(mpMap).filter(p => p.count >= 1).sort((a, b) => b.count - a.count).slice(0, 10)
-        .map(p => ({ ...p, areas: p.areas.size }));
-
-  const maxC = ranking[0]?.count || 1;
-
-  return (
-    <div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-        {[["mla", "🏛️ MLAs"], ["mp", "🇮🇳 MPs"]].map(([id, label]) => (
-          <button key={id} className={`nav-item ${tab === id ? "active" : ""}`} onClick={() => setTab(id)} style={{ flex: 1, justifyContent: "center" }}>{label}</button>
-        ))}
-      </div>
-      {ranking.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-secondary)" }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-          <p style={{ color: "var(--text-primary)", fontSize: 16, fontWeight: 600 }}>Clean Record</p>
-          <p style={{ color: "var(--text-secondary)", fontSize: 14, marginTop: 8 }}>No reports yet.</p>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {ranking.map((p, i) => {
-            const lv = shame(p.count);
-            return (
-              <div key={i} className="report-item" style={{ padding: "16px", alignItems: "center" }}>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: i < 3 ? "var(--accent-primary)" : "var(--bg-main)", color: i < 3 ? "#fff" : "var(--text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: i < 3 ? 24 : 16, fontWeight: 800, flexShrink: 0 }}>
-                  {i < 3 ? medals[i] : `#${i + 1}`}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
-                    <span style={{ fontWeight: 800, fontSize: 16, color: "var(--text-primary)" }}>{p.name}</span>
-                    <Badge party={p.party} />
-                    <span style={{ background: lv.bg, color: lv.color, fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20, marginLeft: "auto" }}>{lv.label}</span>
-                  </div>
-                  <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 10 }}>
-                    {tab === "mla" ? `${p.constituency} • ${p.district}` : `${p.seat} Lok Sabha • ${p.areas} areas`}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ fontSize: 14 }}>
-                      {Array.from({ length: Math.min(p.count, 5) }).map((_, j) => <span key={j}>🗑️</span>)}
-                      {p.count > 5 && <span style={{ fontSize: 12, color: "var(--accent-primary)", fontWeight: 800, marginLeft: 4 }}>+{p.count - 5}</span>}
-                    </span>
-                    <span style={{ fontSize: 13, color: "var(--text-primary)", fontWeight: 700 }}>{p.count} report{p.count !== 1 ? "s" : ""}</span>
-                  </div>
-                  <div className="progress-track"><div className="progress-fill" style={{ width: `${(p.count / maxC) * 100}%` }} /></div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Admin PIN Modal ───────────────────────────────────────────────────────
-function AdminPinModal({ onSuccess, onCancel }) {
-  const [pin, setPin] = useState("");
-  const [error, setError] = useState(false);
-
-  const handleSubmit = () => {
-    if (pin === ADMIN_PIN) { onSuccess(); }
-    else { setError(true); setPin(""); setTimeout(() => setError(false), 600); }
-  };
-
-  return (
-    <div className="pin-overlay">
-      <div className="pin-box">
-        <div style={{ fontSize: 40, marginBottom: 8 }}>🔐</div>
-        <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 4px 0" }}>Admin Access</h2>
-        <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0 }}>Enter the 4-digit admin PIN to view analytics</p>
-        <input
-          className={`pin-input ${error ? "error" : ""}`}
-          type="password"
-          maxLength={4}
-          placeholder="••••"
-          value={pin}
-          onChange={e => setPin(e.target.value.replace(/\D/g, ""))}
-          onKeyDown={e => e.key === "Enter" && handleSubmit()}
-          autoFocus
+    <div style={{ width: "100%", height: "450px", borderRadius: 16, overflow: "hidden", position: "relative", boxShadow: "var(--shadow-sm)" }}>
+      <MapContainer center={[26.2006, 92.9376]} zoom={7} style={{ height: "100%", width: "100%", zIndex: 1 }} scrollWheelZoom={false}>
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://carto.com/">Carto</a>'
         />
-        <div style={{ display: "flex", gap: 10 }}>
-          <button className="btn-secondary" style={{ flex: 1 }} onClick={onCancel}>Cancel</button>
-          <button className="btn-primary" style={{ flex: 1 }} onClick={handleSubmit} disabled={pin.length < 4}>Enter →</button>
-        </div>
-      </div>
+        {gps.map((r, i) => {
+          const w = WASTE.find(t => t.id === r.waste_type);
+          const col = w ? w.color : "#EF4444";
+          const iconHtml = `<div style="background-color: ${col}; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'"></div>`;
+          const customIcon = L.divIcon({ html: iconHtml, className: "custom-leaflet-icon", iconSize: [16, 16], iconAnchor: [8, 8] });
+          return (
+            <Marker key={r.id || i} position={[r.lat, r.lng]} icon={customIcon}>
+              <Popup>
+                <div style={{ padding: "4px", minWidth: 150 }}>
+                  <h4 style={{ margin: "0 0 4px 0", fontSize: 14 }}>{w?.label || "Waste"}</h4>
+                  <p style={{ margin: "0 0 8px 0", fontSize: 12, color: "#666" }}>{r.district}</p>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
+      </MapContainer>
     </div>
   );
 }
 
-// ── Analytics Dashboard ───────────────────────────────────────────────────
-function AnalyticsDashboard({ reports }) {
-  const total = reports.length || 1;
-
-  // Resolution breakdown
-  const statusCounts = { open: 0, "working on it": 0, resolved: 0, ignored: 0 };
-  reports.forEach(r => { const s = (r.status || "open").toLowerCase(); if (s in statusCounts) statusCounts[s]++; });
-  const resItems = [
-    { label: "Open",          count: statusCounts["open"],           color: "#3b82f6" },
-    { label: "Working On It", count: statusCounts["working on it"],  color: "#f59e0b" },
-    { label: "Resolved",      count: statusCounts["resolved"],        color: "#10b981" },
-    { label: "Ignored",       count: statusCounts["ignored"],         color: "#ef4444" },
-  ];
-  const resolvedPct = Math.round((statusCounts["resolved"] / total) * 100);
-
-  // District heatmap
-  const distMap = {};
-  reports.forEach(r => { distMap[r.district] = (distMap[r.district] || 0) + 1; });
-  const distEntries = Object.entries(distMap).sort((a, b) => b[1] - a[1]);
-  const maxDist = distEntries[0]?.[1] || 1;
-  const heatColor = (count) => {
-    const ratio = count / maxDist;
-    if (ratio > 0.75) return { bg: "#fecaca", color: "#991b1b" };
-    if (ratio > 0.5)  return { bg: "#fed7aa", color: "#92400e" };
-    if (ratio > 0.25) return { bg: "#fef9c3", color: "#713f12" };
-    return                   { bg: "#dcfce7", color: "#14532d" };
-  };
-
-  // Waste type breakdown
-  const wasteMap = {};
-  reports.forEach(r => { wasteMap[r.waste_type] = (wasteMap[r.waste_type] || 0) + 1; });
-  const wasteEntries = WASTE.map(w => ({ ...w, count: wasteMap[w.id] || 0 })).sort((a, b) => b.count - a.count);
-  const maxWaste = wasteEntries[0]?.count || 1;
-
-  // Weekly trend (last 8 weeks)
-  const weekBuckets = {};
-  reports.forEach(r => {
-    const d = new Date(r.created_at);
-    const wk = Math.floor((Date.now() - d.getTime()) / (7 * 864e5));
-    if (wk < 8) weekBuckets[7 - wk] = (weekBuckets[7 - wk] || 0) + 1;
-  });
-  const weekData = Array.from({ length: 8 }, (_, i) => weekBuckets[i] || 0);
-  const maxWeek = Math.max(1, ...weekData);
-
-  // Top reporters
-  const reporterMap = {};
-  reports.forEach(r => {
-    if (r.reporter_alias) reporterMap[r.reporter_alias] = (reporterMap[r.reporter_alias] || 0) + 1;
-  });
-  const topReporters = Object.entries(reporterMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
-
-  // Most upvoted
-  const topUpvoted = [...reports].sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0)).slice(0, 5);
-
-  return (
-    <div className="slide-in">
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(37,99,235,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>📊</div>
-          <div>
-            <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, letterSpacing: "-0.02em" }}>Analytics Dashboard</h1>
-            <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0 }}>Admin view · {total} total reports</p>
-          </div>
-        </div>
-      </div>
-
-      {/* KPI row */}
-      <div className="stats-grid" style={{ marginBottom: 28 }}>
-        {[
-          { n: total, l: "Total Reports", s: "All time", icon: "📋" },
-          { n: `${resolvedPct}%`, l: "Resolution Rate", s: "Resolved / Total", icon: "✅" },
-          { n: statusCounts["open"], l: "Open Issues", s: "Needs attention", icon: "🔴" },
-          { n: distEntries.length, l: "Districts Affected", s: "Across Assam", icon: "📍" },
-        ].map(s => (
-          <div key={s.l} className="card stat-card hoverable">
-            <div style={{ fontSize: 24, marginBottom: 8 }}>{s.icon}</div>
-            <div className="stat-value">{s.n}</div>
-            <div className="stat-label">{s.l}</div>
-            <div className="stat-sub">{s.s}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="analytics-grid">
-        {/* Resolution Breakdown */}
-        <div className="card hoverable" style={{ gridColumn: "span 1" }}>
-          <h3 style={{ fontWeight: 800, fontSize: 16, margin: "0 0 20px 0" }}>📈 Resolution Breakdown</h3>
-          <div className="bar-chart">
-            {resItems.map(item => (
-              <div key={item.label} className="bar-row">
-                <div className="bar-label">{item.label}</div>
-                <div className="bar-track">
-                  <div className="bar-fill" style={{ width: `${(item.count / total) * 100}%`, background: item.color }}>
-                    {item.count > 0 && `${Math.round((item.count / total) * 100)}%`}
-                  </div>
-                </div>
-                <div className="bar-val">{item.count}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Weekly Trend */}
-        <div className="card hoverable">
-          <h3 style={{ fontWeight: 800, fontSize: 16, margin: "0 0 16px 0" }}>📅 Weekly Trend</h3>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "0 0 16px 0" }}>Reports submitted per week (last 8 weeks)</p>
-          <div className="sparkline">
-            {weekData.map((v, i) => (
-              <div
-                key={i}
-                className="spark-bar"
-                style={{ height: `${(v / maxWeek) * 100}%` }}
-                title={`Week ${i + 1}: ${v} reports`}
-              />
-            ))}
-          </div>
-          <div className="spark-label">
-            {["8w", "7w", "6w", "5w", "4w", "3w", "2w", "1w"].map(l => <span key={l}>{l}</span>)}
-          </div>
-        </div>
-
-        {/* Waste Type Breakdown */}
-        <div className="card hoverable">
-          <h3 style={{ fontWeight: 800, fontSize: 16, margin: "0 0 20px 0" }}>🗂 Waste Types</h3>
-          <div className="bar-chart">
-            {wasteEntries.map(w => (
-              <div key={w.id} className="bar-row">
-                <div className="bar-label" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4 }}>
-                  <span>{w.icon}</span>
-                  <span style={{ fontSize: 10 }}>{w.label.split(" ")[0]}</span>
-                </div>
-                <div className="bar-track">
-                  <div className="bar-fill" style={{ width: `${(w.count / maxWaste) * 100}%`, background: w.color }}>
-                    {w.count > 0 && w.count}
-                  </div>
-                </div>
-                <div className="bar-val">{w.count}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* District Heatmap */}
-        <div className="card hoverable" style={{ gridColumn: "1 / -1" }}>
-          <h3 style={{ fontWeight: 800, fontSize: 16, margin: "0 0 16px 0" }}>🗺️ District Heatmap</h3>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "0 0 16px 0" }}>Color intensity shows number of active reports</p>
-          {distEntries.length === 0 ? (
-            <p style={{ color: "var(--text-secondary)", textAlign: "center", padding: 24 }}>No data yet</p>
-          ) : (
-            <div className="heatmap-grid">
-              {distEntries.map(([dist, count]) => {
-                const { bg, color } = heatColor(count);
-                return (
-                  <div key={dist} className="heatmap-cell" style={{ background: bg, color }}>
-                    <div style={{ fontSize: 16, marginBottom: 4 }}>📍</div>
-                    <div style={{ marginBottom: 2 }}>{dist}</div>
-                    <div style={{ fontSize: 14, fontWeight: 800 }}>{count}</div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Top Community Reporters */}
-        <div className="card hoverable">
-          <h3 style={{ fontWeight: 800, fontSize: 16, margin: "0 0 16px 0" }}>🏆 Top Reporters</h3>
-          {topReporters.length === 0 ? (
-            <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>No reporter data yet</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {topReporters.map(([alias, count], i) => (
-                <div key={alias} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: i === 0 ? "linear-gradient(135deg,#fbbf24,#f59e0b)" : "var(--bg-main)", color: i === 0 ? "#fff" : "var(--text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
-                    {i === 0 ? "🏆" : `#${i+1}`}
-                  </div>
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "var(--accent-primary)" }}>{alias}</span>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>{count}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Most Upvoted Reports */}
-        <div className="card hoverable">
-          <h3 style={{ fontWeight: 800, fontSize: 16, margin: "0 0 16px 0" }}>👀 Most Flagged Issues</h3>
-          {topUpvoted.length === 0 || topUpvoted[0]?.upvotes === 0 ? (
-            <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>No upvotes yet</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {topUpvoted.filter(r => (r.upvotes || 0) > 0).map((r, i) => (
-                <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 6, background: "rgba(99,102,241,0.1)", color: "#6366f1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
-                    {r.upvotes}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.constituency}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>{r.district}</div>
-                  </div>
-                  <span style={{ fontSize: 11, padding: "2px 6px", borderRadius: 4, background: getStatusColor(r.status) + "20", color: getStatusColor(r.status), fontWeight: 700 }}>{(r.status || "OPEN").toUpperCase()}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── PIE CHART COMPONENT ──────────────────────────────────────────────────
 function PieChart({ reports }) {
   const counts = {};
   reports.forEach(r => { counts[r.waste_type] = (counts[r.waste_type] || 0) + 1; });
@@ -705,66 +264,90 @@ function PieChart({ reports }) {
   
   let cum = 0;
   const segments = WASTE.slice(0,6).map(w => {
-    const p = ((counts[w.id] || 0) / total) * 100;
+    const p = ((counts[w.id] || 0) / total);
+    const startAngle = cum * 360;
     cum += p;
-    return { ...w, pct: p, cum };
-  });
+    const endAngle = cum * 360;
+    return { ...w, startAngle, endAngle, pct: p * 100, count: counts[w.id] || 0 };
+  }).filter(s => s.count > 0);
+
+  const getCoordinatesForPercent = (percent) => {
+    const x = Math.cos(2 * Math.PI * percent);
+    const y = Math.sin(2 * Math.PI * percent);
+    return [x, y];
+  };
 
   return (
-    <div className="card hoverable" style={{ marginBottom: 24 }}>
-      <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16 }}>📊 Waste Type Breakdown</h2>
-      <div className="pie-chart-container" style={{
-        "--pie-c1": segments[0].color, "--pie-p1": `${segments[0].pct}%`,
-        "--pie-c2": segments[1].color, "--pie-p2": `${segments[1].cum}%`,
-        "--pie-c3": segments[2].color, "--pie-p3": `${segments[2].cum}%`,
-        "--pie-c4": segments[3].color, "--pie-p4": `${segments[3].cum}%`,
-        "--pie-c5": segments[4].color, "--pie-p5": `${segments[4].cum}%`,
-        "--pie-c6": segments[5].color, "--pie-p6": `${segments[5].cum}%`,
-      }}>
-        <div className="pie-chart"></div>
+    <div className="card hoverable animate-in" style={{ marginBottom: 24, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 32 }}>
+      <div style={{ flex: 1, minWidth: 250 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8, letterSpacing: "-0.01em" }}>📊 Waste Type Breakdown</h2>
+        <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 24 }}>Distribution of reported issues across categories.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {segments.map(s => (
-            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600 }}>
-              <span style={{ width: 12, height: 12, borderRadius: "50%", background: s.color, display: "inline-block" }} />
-              <span style={{ width: 150 }}>{s.label}</span>
-              <span style={{ color: "var(--text-secondary)" }}>{counts[s.id] || 0} ({Math.round(s.pct)}%)</span>
+            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 14, fontWeight: 600 }}>
+              <span style={{ width: 14, height: 14, borderRadius: "4px", background: s.color, display: "inline-block", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }} />
+              <span style={{ flex: 1 }}>{s.label}</span>
+              <span style={{ color: "var(--text-primary)", fontWeight: 800 }}>{s.count} <span style={{ color: "var(--text-secondary)", fontWeight: 500, fontSize: 12 }}>({Math.round(s.pct)}%)</span></span>
             </div>
           ))}
+          {segments.length === 0 && <p style={{ color: "var(--text-secondary)" }}>No data available.</p>}
         </div>
       </div>
+      
+      {segments.length > 0 && (
+        <div style={{ width: 220, height: 220, position: "relative" }}>
+          <svg viewBox="-1 -1 2 2" style={{ transform: "rotate(-90deg)", width: "100%", height: "100%", overflow: "visible" }}>
+            {segments.map(s => {
+              const start = getCoordinatesForPercent(s.startAngle / 360);
+              const end = getCoordinatesForPercent(s.endAngle / 360);
+              const largeArcFlag = s.pct > 50 ? 1 : 0;
+              const pathData = [
+                `M ${start[0]} ${start[1]}`,
+                `A 1 1 0 ${largeArcFlag} 1 ${end[0]} ${end[1]}`,
+                `L 0 0`,
+              ].join(' ');
+              if (s.pct === 100) return <circle key={s.id} cx="0" cy="0" r="1" fill={s.color} />;
+              return (
+                <path key={s.id} d={pathData} fill={s.color} className="pie-slice" style={{ transition: "all 0.3s ease", cursor: "pointer", stroke: "#fff", strokeWidth: 0.02 }} />
+              );
+            })}
+          </svg>
+          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 120, height: 120, background: "var(--bg-surface)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", boxShadow: "inset 0 2px 10px rgba(0,0,0,0.05)" }}>
+            <span style={{ fontSize: 28, fontWeight: 800 }}>{total}</span>
+            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600, textTransform: "uppercase" }}>Total</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Success Screen ────────────────────────────────────────────────────────
-function SuccessScreen({ onDone }) {
-  const [progress, setProgress] = useState(0);
+const QUOTES = [
+  { text: "Cleanliness is not just a choice, it is a civic duty.", author: "Community Initiative" },
+  { text: "Every report builds a permanent public record. Silence is no longer an option.", author: "Urban Patch" },
+  { text: "Small actions today lead to a sustainable city tomorrow.", author: "Environmental Vision" },
+  { text: "Your city. Your voice. We hold them accountable, together.", author: "Urban Patch Motto" }
+];
+
+function QuoteCarousel() {
+  const [idx, setIdx] = useState(0);
   useEffect(() => {
-    const start = Date.now();
-    const interval = setInterval(() => {
-      const pct = Math.min(((Date.now() - start) / 3000) * 100, 100);
-      setProgress(pct);
-      if (pct >= 100) { clearInterval(interval); setTimeout(onDone, 200); }
-    }, 30);
-    return () => clearInterval(interval);
+    const int = setInterval(() => setIdx(i => (i + 1) % QUOTES.length), 6000);
+    return () => clearInterval(int);
   }, []);
-
+  
   return (
-    <div className="card pop-in" style={{ maxWidth: 480, margin: "60px auto", textAlign: "center", padding: "40px 24px" }}>
-      <div style={{ fontSize: 64, marginBottom: 24 }}>✅</div>
-      <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12, color: "var(--text-primary)" }}>Report Submitted!</h2>
-      <p style={{ color: "var(--text-secondary)", fontSize: 16, lineHeight: 1.6, marginBottom: 32 }}>
-        Your report is now live.<br />The responsible MLA &amp; MP have been officially tagged.
-      </p>
-      <div className="progress-track" style={{ height: 8, marginBottom: 16 }}>
-        <div className="progress-fill" style={{ width: `${progress}%` }} />
-      </div>
-      <p style={{ color: "var(--accent-primary)", fontWeight: 600, fontSize: 14 }}>Taking you back to the dashboard...</p>
+    <div className="quote-carousel animate-in">
+      {QUOTES.map((q, i) => (
+        <div key={i} style={{ position: i === idx ? "relative" : "absolute", opacity: i === idx ? 1 : 0, transition: "opacity 1s ease", top: i === idx ? 0 : 0, left: 0, width: "100%", height: "100%" }}>
+          <p className="quote-text">"${q.text}"</p>
+          <p className="quote-author">— ${q.author}</p>
+        </div>
+      ))}
     </div>
   );
 }
 
-// ── MAIN APP COMPONENT ────────────────────────────────────────────────────
 export default function UrbanPatch() {
   // ── User identity
   const [currentUser]  = useState(() => getOrCreateUser());
@@ -979,7 +562,7 @@ export default function UrbanPatch() {
             <button
               key={n.id}
               id={`nav-${n.id}`}
-              className={`nav-item ${view === n.id ? "active" : ""} ${n.id === "mine" ? "my-reports-active" : ""}`}
+              className={`nav-item ${view === n.id ? "active " + (n.id === "mine" ? "my-reports-active" : "") : ""}`}
               onClick={() => { setView(n.id); setSubmitted(false); }}
             >
               {n.icon} <span className="hide-mobile">{n.label}</span>
@@ -1047,6 +630,7 @@ export default function UrbanPatch() {
               ))}
             </div>
 
+            <QuoteCarousel />
             <PieChart reports={reports} />
 
             <div className="dash-grid animate-in">

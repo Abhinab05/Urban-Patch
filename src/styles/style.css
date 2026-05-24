@@ -396,8 +396,22 @@ body {
   color: var(--text-primary);
 }
 
+.hero-motto-container {
+  position: relative;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+@media (max-width: 767px) {
+  .hero-motto-container {
+    height: 140px;
+  }
+}
+
 .hero-subtitle {
-  font-size: 18px;
+  font-size: 16px;
   color: var(--text-secondary);
   max-width: 600px;
   margin: 0 auto 32px;
@@ -1042,8 +1056,8 @@ ul, li { margin: 0; padding: 0; list-style: none; }
   animation: panBg 40s linear infinite alternate;
 }
 @keyframes panBg {
-  from { background-position: 0% 50%; }
-  to { background-position: 100% 50%; }
+  from { background-position: 0% 50%; transform: scale(1); }
+  to { background-position: 100% 50%; transform: scale(1.1); }
 }
 
 .hero-section-wrapper {

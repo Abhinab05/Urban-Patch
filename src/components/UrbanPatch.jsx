@@ -1257,6 +1257,7 @@ export default function UrbanPatch() {
       {/* Top Navbar */}
       <nav className="top-nav">
         <div className="logo">
+          <div className="logo-icon">UP</div>
           <span>Urban Patch</span>
         </div>
         <div className="nav-links">

@@ -1517,7 +1517,7 @@ ul, li { margin: 0; padding: 0; list-style: none; }
   }
 }
 
-@media (max-width: 400px) { .logo span { display: none; } .logo-icon { margin-right: 0; } }
+@media (max-width: 400px) { .logo span { font-size: 18px; } .logo-icon { width: 32px; height: 32px; font-size: 16px; margin-right: 0; } }
 @media (max-width: 600px) {
   .quote-text {
     font-size: 20px;

@@ -119,6 +119,34 @@ const db = {
       return res.ok;
     } catch { return false; }
   },
+  async updateReportDetails(id, updates) {
+    try {
+      const res = await fetch(`${SUPA_URL}/rest/v1/reports?id=eq.${id}`, {
+        method: "PATCH",
+        headers: { ...H, "Content-Type": "application/json" },
+        body: JSON.stringify(updates)
+      });
+      return res.ok;
+    } catch { return false; }
+  },
+  async banUser(userId, alias) {
+    try {
+      const res = await fetch(`${SUPA_URL}/rest/v1/banned_users`, {
+        method: "POST",
+        headers: { ...H, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" },
+        body: JSON.stringify({ user_id: userId, alias })
+      });
+      return res.ok;
+    } catch { return false; }
+  },
+  async getBannedUsers() {
+    try {
+      const res = await fetch(`${SUPA_URL}/rest/v1/banned_users?select=*`, { headers: H });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.map(u => u.user_id);
+    } catch { return []; }
+  },
   async upvoteReport(id) {
     try {
       // Use Supabase RPC-style increment via PATCH with raw SQL expression won't work with anon key
@@ -1014,6 +1042,9 @@ export default function UrbanPatch() {
 
   // ── Data
   const [selReport, setSelReport] = useState(null);
+  const [isEditingReport, setIsEditingReport] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [bannedUsers, setBannedUsers] = useState([]);
   const [reports, setReports]     = useState([]);
   const [loadingRep, setLoadingRep] = useState(true);
   const [districts, setDistricts] = useState([]);
@@ -1088,6 +1119,7 @@ export default function UrbanPatch() {
     db.getReports().then(d => { setReports(d || []); setLoadingRep(false); });
     db.getMlas().then(d => { setMlas(d || []); setDistricts([...new Set((d || []).map(m => m.district))].sort()); setLoadingMlas(false); });
     db.getMessages().then(d => setMessages(d || []));
+    db.getBannedUsers().then(d => setBannedUsers(d || []));
   }, []);
 
   // ── Scroll Reveal Observer
@@ -1127,6 +1159,7 @@ export default function UrbanPatch() {
   const onPhoto = e => { const f = e.target.files?.[0]; if (!f) return; setForm(prev => ({ ...prev, photoFile: f, photoPreview: URL.createObjectURL(f) })); };
 
   const onSubmit = async () => {
+    if (bannedUsers.includes(currentUser.id)) return alert("You have been banned from submitting reports.");
     if (!form.district || !form.constituency || !form.area || !form.photoFile) return alert("Please fill required fields and add a photo.");
     setSubmitting(true);
     setSubmitStep("uploading");
@@ -1165,19 +1198,22 @@ export default function UrbanPatch() {
   const goToReport = () => { setView("report"); setSubmitted(false); window.scrollTo(0, 0); };
 
   // ── Computed values
-  const uCons  = new Set(reports.map(r => r.constituency)).size;
-  const total  = reports.length;
-  const week   = reports.filter(r => Date.now() - new Date(r.created_at).getTime() < 7 * 864e5).length;
-  const myReports = reports.filter(r => r.reporter_id === currentUser.id || r.reporter_alias === currentUser.alias);
+  const activeReports = reports.filter(r => !bannedUsers.includes(r.reporter_id));
+  const activeMessages = messages.filter(m => !bannedUsers.includes(m.author_id));
+
+  const uCons  = new Set(activeReports.map(r => r.constituency)).size;
+  const total  = activeReports.length;
+  const week   = activeReports.filter(r => Date.now() - new Date(r.created_at).getTime() < 7 * 864e5).length;
+  const myReports = activeReports.filter(r => r.reporter_id === currentUser.id || r.reporter_alias === currentUser.alias);
   const consForDist = mlas.filter(m => m.district === form.district).sort((a, b) => a.constituency.localeCompare(b.constituency));
 
   const countByC = {};
-  reports.forEach(r => { countByC[r.constituency] = countByC[r.constituency] || { count: 0, district: r.district, party: r.mla_party }; countByC[r.constituency].count++; });
+  activeReports.forEach(r => { countByC[r.constituency] = countByC[r.constituency] || { count: 0, district: r.district, party: r.mla_party }; countByC[r.constituency].count++; });
   const topC = Object.entries(countByC).sort((a, b) => b[1].count - a[1].count).slice(0, 5);
 
   const sortedFeed = feedSort === "upvotes"
-    ? [...reports].sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0))
-    : reports;
+    ? [...activeReports].sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0))
+    : activeReports;
 
   const NAV = [
     { id: "dashboard", icon: "📊", label: "Dashboard" },
@@ -1541,10 +1577,10 @@ export default function UrbanPatch() {
             <div className="chat-window animate-in" style={{ position: "relative", zIndex: 10, backgroundImage: "url(/community_bg.png)", backgroundSize: "cover", backgroundPosition: "center", borderRadius: 20, color: "#1e293b", overflow: "hidden" }}><div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.82)", backdropFilter: "blur(2px)", borderRadius: 20 }} />
               
               <div className="chat-messages" style={{ position: "relative", zIndex: 10, color: "#1e293b" }}>
-                {messages.length === 0 ? (
+                {activeMessages.length === 0 ? (
                   <p style={{ textAlign: "center", color: "var(--text-secondary)", marginTop: 40 }}>Be the first to start a discussion!</p>
                 ) : (
-                  messages.map(msg => {
+                  activeMessages.map(msg => {
                     const isMine = msg.author_id === currentUser.id;
                     return (
                       <div key={msg.id} className={`chat-bubble ${isMine ? "mine" : "theirs"}`} style={{ position: "relative" }}>
@@ -1553,18 +1589,35 @@ export default function UrbanPatch() {
                             <span style={{ fontWeight: 500 }}>
                               {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               {isAdmin && (
-                                <button
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    if(window.confirm("Delete this message?")) {
-                                      const ok = await db.deleteMessage(msg.id);
-                                      if (ok) db.getMessages().then(m => setMessages(m || []));
-                                    }
-                                  }}
-                                  style={{ marginLeft: 8, background: "none", border: "none", color: "var(--danger)", cursor: "pointer", fontSize: 12, padding: 0 }}
-                                >
-                                  Delete
-                                </button>
+                                <>
+                                  <button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if(window.confirm("Delete this message?")) {
+                                        const ok = await db.deleteMessage(msg.id);
+                                        if (ok) db.getMessages().then(m => setMessages(m || []));
+                                      }
+                                    }}
+                                    style={{ marginLeft: 8, background: "none", border: "none", color: "var(--danger)", cursor: "pointer", fontSize: 12, padding: 0 }}
+                                  >
+                                    Delete
+                                  </button>
+                                  <button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if(window.confirm(`Ban user ${msg.author_alias}?`)) {
+                                        const ok = await db.banUser(msg.author_id, msg.author_alias);
+                                        if (ok) {
+                                          setBannedUsers(prev => [...prev, msg.author_id]);
+                                          alert("User banned.");
+                                        }
+                                      }
+                                    }}
+                                    style={{ marginLeft: 8, background: "none", border: "none", color: "#4b5563", cursor: "pointer", fontSize: 12, padding: 0 }}
+                                  >
+                                    Ban
+                                  </button>
+                                </>
                               )}
                             </span>
                           </div>
@@ -1585,6 +1638,7 @@ export default function UrbanPatch() {
                   onChange={e => setChatInput(e.target.value)}
                   onKeyDown={e => {
                     if (e.key === "Enter" && chatInput.trim() && !loadingChat) {
+                      if (bannedUsers.includes(currentUser.id)) return alert("You are banned from posting.");
                       setLoadingChat(true);
                       const newMsg = { content: chatInput.trim(), author_alias: currentUser.alias, author_id: currentUser.id };
                       db.insertMessage(newMsg).then(ok => {
@@ -1602,6 +1656,7 @@ export default function UrbanPatch() {
                   className="btn-primary"
                   disabled={loadingChat || !chatInput.trim()}
                   onClick={() => {
+                    if (bannedUsers.includes(currentUser.id)) return alert("You are banned from posting.");
                     setLoadingChat(true);
                     const newMsg = { content: chatInput.trim(), author_alias: currentUser.alias, author_id: currentUser.id };
                     db.insertMessage(newMsg).then(ok => {
@@ -1643,7 +1698,14 @@ export default function UrbanPatch() {
                   <h2 style={{ fontWeight: 800, fontSize: 24, margin: 0 }}>{selReport.constituency}</h2>
                 </div>
                 <div style={{ fontSize: 14, color: "var(--text-secondary)", fontWeight: 500 }}>
-                  📍 {[selReport.district, selReport.area, selReport.landmark].filter(Boolean).join(" • ")}
+                  {isEditingReport ? (
+                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                      <input value={editForm.area} onChange={e => setEditForm(prev => ({...prev, area: e.target.value}))} placeholder="Area" style={{ flex: 1, padding: 8, borderRadius: 6, border: "1px solid var(--border-color)", background: "var(--bg-surface)", color: "var(--text-primary)" }} />
+                      <input value={editForm.landmark} onChange={e => setEditForm(prev => ({...prev, landmark: e.target.value}))} placeholder="Landmark" style={{ flex: 1, padding: 8, borderRadius: 6, border: "1px solid var(--border-color)", background: "var(--bg-surface)", color: "var(--text-primary)" }} />
+                    </div>
+                  ) : (
+                    <>📍 {[selReport.district, selReport.area, selReport.landmark].filter(Boolean).join(" • ")}</>
+                  )}
                 </div>
                 {selReport.reporter_alias && (
                   <div className="reporter-line" style={{ marginTop: 6 }}>
@@ -1655,7 +1717,16 @@ export default function UrbanPatch() {
 
               {(() => { const w = WASTE.find(t => t.id === selReport.waste_type); return w ? <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: w.color + "15", color: w.color, padding: "6px 12px", borderRadius: 8, fontSize: 13, fontWeight: 700, marginBottom: 20 }}>{w.icon} {w.label}</div> : null; })()}
 
-              {selReport.description && <p style={{ color: "var(--text-primary)", fontSize: 15, lineHeight: 1.6, marginBottom: 24, padding: 16, background: "var(--bg-main)", borderRadius: 12 }}>{selReport.description}</p>}
+              {isEditingReport ? (
+                <textarea
+                  value={editForm.description}
+                  onChange={e => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                  style={{ width: "100%", padding: 16, background: "var(--bg-main)", borderRadius: 12, border: "1px solid var(--border-color)", color: "var(--text-primary)", fontSize: 15, lineHeight: 1.6, marginBottom: 24, resize: "vertical", minHeight: 100 }}
+                  placeholder="Update description..."
+                />
+              ) : (
+                selReport.description && <p style={{ color: "var(--text-primary)", fontSize: 15, lineHeight: 1.6, marginBottom: 24, padding: 16, background: "var(--bg-main)", borderRadius: 12 }}>{selReport.description}</p>
+              )}
 
               <div style={{ padding: 20, background: "rgba(37,99,235,0.05)", borderRadius: 12, border: "1px solid rgba(37,99,235,0.2)" }}>
                 <div style={{ fontSize: 11, color: "var(--accent-primary)", fontWeight: 800, letterSpacing: ".05em", marginBottom: 16 }}>TAGGED OFFICIALS</div>
@@ -1692,41 +1763,90 @@ export default function UrbanPatch() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>Status:</span>
-                    <select
-                      value={selReport.status || "open"}
-                      onChange={async e => {
-                        const newStatus = e.target.value;
-                        const ok = await db.updateReportStatus(selReport.id, newStatus);
-                        if (ok) { setSelReport({ ...selReport, status: newStatus }); setReports(prev => prev.map(r => r.id === selReport.id ? { ...r, status: newStatus } : r)); }
-                        else alert("Failed to update status");
-                      }}
-                      style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 13, fontWeight: 700, color: getStatusColor(selReport.status), background: "var(--bg-surface)", cursor: "pointer" }}
-                    >
-                      <option value="open">OPEN</option>
-                      <option value="working on it">WORKING ON IT</option>
-                      <option value="resolved">RESOLVED</option>
-                      <option value="ignored">IGNORED</option>
-                    </select>
+                    {(isAdmin || currentUser.id === selReport.reporter_id) ? (
+                      <select
+                        value={selReport.status || "open"}
+                        onChange={async e => {
+                          const newStatus = e.target.value;
+                          const ok = await db.updateReportStatus(selReport.id, newStatus);
+                          if (ok) { setSelReport({ ...selReport, status: newStatus }); setReports(prev => prev.map(r => r.id === selReport.id ? { ...r, status: newStatus } : r)); }
+                          else alert("Failed to update status");
+                        }}
+                        style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 13, fontWeight: 700, color: getStatusColor(selReport.status), background: "var(--bg-surface)", cursor: "pointer" }}
+                      >
+                        <option value="open">OPEN</option>
+                        <option value="working on it">WORKING ON IT</option>
+                        <option value="resolved">RESOLVED</option>
+                        <option value="ignored">IGNORED</option>
+                      </select>
+                    ) : (
+                      <span style={{ fontSize: 13, fontWeight: 700, padding: "4px 8px", borderRadius: 6, background: getStatusColor(selReport.status) + "20", color: getStatusColor(selReport.status) }}>
+                        {(selReport.status || "OPEN").toUpperCase()}
+                      </span>
+                    )}
                   </div>
                   <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>Reported <TimeAgo date={selReport.created_at} /></span>
                 </div>
 
                 {/* Admin Actions */}
                 {isAdmin && (
-                  <button
-                    onClick={async () => {
-                      if (window.confirm("Are you sure you want to permanently delete this report?")) {
-                        const ok = await db.deleteReport(selReport.id);
-                        if (ok) {
-                          setReports(prev => prev.filter(r => r.id !== selReport.id));
-                          setSelReport(null);
-                        } else alert("Failed to delete report. Ensure Row Level Security allows deletes.");
-                      }
-                    }}
-                    style={{ background: "#fef2f2", color: "var(--danger)", border: "1px solid #fca5a5", padding: "8px", borderRadius: "8px", fontWeight: "700", cursor: "pointer", marginTop: "12px" }}
-                  >
-                    🗑️ Delete Report (Admin)
-                  </button>
+                  <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => {
+                        if (isEditingReport) {
+                          db.updateReportDetails(selReport.id, editForm).then(ok => {
+                            if (ok) {
+                              const updated = { ...selReport, ...editForm };
+                              setSelReport(updated);
+                              setReports(prev => prev.map(r => r.id === selReport.id ? updated : r));
+                              setIsEditingReport(false);
+                            } else alert("Failed to save edits");
+                          });
+                        } else {
+                          setEditForm({ description: selReport.description || "", area: selReport.area || "", landmark: selReport.landmark || "" });
+                          setIsEditingReport(true);
+                        }
+                      }}
+                      style={{ background: isEditingReport ? "#10b981" : "var(--bg-main)", color: isEditingReport ? "#fff" : "var(--text-primary)", border: "1px solid var(--border-color)", padding: "8px", borderRadius: "8px", fontWeight: "700", cursor: "pointer", flex: 1 }}
+                    >
+                      {isEditingReport ? "💾 Save Edits" : "✏️ Edit Report"}
+                    </button>
+                    {isEditingReport && (
+                      <button onClick={() => setIsEditingReport(false)} style={{ background: "var(--bg-main)", color: "var(--text-primary)", border: "1px solid var(--border-color)", padding: "8px", borderRadius: "8px", fontWeight: "700", cursor: "pointer" }}>Cancel</button>
+                    )}
+                    {!isEditingReport && (
+                      <>
+                        <button
+                          onClick={async () => {
+                            if (window.confirm("Are you sure you want to permanently delete this report?")) {
+                              const ok = await db.deleteReport(selReport.id);
+                              if (ok) {
+                                setReports(prev => prev.filter(r => r.id !== selReport.id));
+                                setSelReport(null);
+                              } else alert("Failed to delete report.");
+                            }
+                          }}
+                          style={{ background: "#fef2f2", color: "var(--danger)", border: "1px solid #fca5a5", padding: "8px", borderRadius: "8px", fontWeight: "700", cursor: "pointer", flex: 1 }}
+                        >
+                          🗑️ Delete Report
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (window.confirm(`Ban user ${selReport.reporter_alias}? They will not be able to post again.`)) {
+                              const ok = await db.banUser(selReport.reporter_id, selReport.reporter_alias);
+                              if (ok) {
+                                setBannedUsers(prev => [...prev, selReport.reporter_id]);
+                                alert("User banned.");
+                              } else alert("Failed to ban user.");
+                            }
+                          }}
+                          style={{ background: "#4b5563", color: "#fff", border: "1px solid #374151", padding: "8px", borderRadius: "8px", fontWeight: "700", cursor: "pointer", flex: 1 }}
+                        >
+                          🚫 Ban User
+                        </button>
+                      </>
+                    )}
+                  </div>
                 )}
 
                 {/* Share */}

@@ -210,9 +210,11 @@ const db = {
     try {
       const res = await fetch(`${SUPA_URL}/rest/v1/reports?id=eq.${id}`, {
         method: "DELETE",
-        headers: H
+        headers: { ...H, Prefer: "return=representation" }
       });
-      return res.ok;
+      if (!res.ok) return false;
+      const data = await res.json();
+      return data && data.length > 0;
     } catch { return false; }
   },
   async getMessages() {
@@ -225,9 +227,11 @@ const db = {
     try {
       const res = await fetch(`${SUPA_URL}/rest/v1/community_messages?id=eq.${id}`, {
         method: "DELETE",
-        headers: H
+        headers: { ...H, Prefer: "return=representation" }
       });
-      return res.ok;
+      if (!res.ok) return false;
+      const data = await res.json();
+      return data && data.length > 0;
     } catch { return false; }
   },
   async insertMessage(data) {
@@ -1612,6 +1616,7 @@ export default function UrbanPatch() {
                                       if(window.confirm("Delete this message?")) {
                                         const ok = await db.deleteMessage(msg.id);
                                         if (ok) db.getMessages().then(m => setMessages(m || []));
+                                        else alert("Failed to delete message. Check Supabase permissions.");
                                       }
                                     }}
                                     style={{ marginLeft: 8, background: "none", border: "none", color: "var(--danger)", cursor: "pointer", fontSize: 12, padding: 0 }}
@@ -1839,7 +1844,7 @@ export default function UrbanPatch() {
                               if (ok) {
                                 setReports(prev => prev.filter(r => r.id !== selReport.id));
                                 setSelReport(null);
-                              } else alert("Failed to delete report.");
+                              } else alert("Failed to delete report. Check Supabase permissions.");
                             }
                           }}
                           style={{ background: "#fef2f2", color: "var(--danger)", border: "1px solid #fca5a5", padding: "8px", borderRadius: "8px", fontWeight: "700", cursor: "pointer", flex: 1 }}

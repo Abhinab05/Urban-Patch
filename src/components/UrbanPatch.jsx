@@ -83,7 +83,7 @@ const db = {
     try {
       const [res1, res2] = await Promise.all([
         fetch(`${SUPA_URL}/rest/v1/public_reports?select=*&order=created_at.desc&limit=200`, { headers: H }),
-        fetch(`${SUPA_URL}/rest/v1/reports?select=id,reporter_id,reporter_alias&order=created_at.desc&limit=200`, { headers: H })
+        fetch(`${SUPA_URL}/rest/v1/reports?select=id,reporter_id,reporter_alias,upvotes&order=created_at.desc&limit=200`, { headers: H })
       ]);
       const publicRep = res1.ok ? await res1.json() : [];
       const baseRep = res2.ok ? await res2.json() : [];
@@ -94,7 +94,8 @@ const db = {
       return publicRep.map(r => ({
         ...r,
         reporter_id: baseMap[r.id] ? baseMap[r.id].reporter_id : null,
-        reporter_alias: baseMap[r.id] ? baseMap[r.id].reporter_alias : null
+        reporter_alias: baseMap[r.id] ? baseMap[r.id].reporter_alias : null,
+        upvotes: baseMap[r.id] ? baseMap[r.id].upvotes : 0
       }));
     } catch { return []; }
   },
@@ -151,18 +152,17 @@ const db = {
   },
   async upvoteReport(id) {
     try {
-      // Use Supabase RPC-style increment via PATCH with raw SQL expression won't work with anon key
-      // Instead fetch current count first, then increment
       const res = await fetch(`${SUPA_URL}/rest/v1/reports?id=eq.${id}&select=upvotes`, { headers: H });
       if (!res.ok) return false;
       const rows = await res.json();
       const current = rows[0]?.upvotes || 0;
       const pRes = await fetch(`${SUPA_URL}/rest/v1/reports?id=eq.${id}`, {
         method: "PATCH",
-        headers: { ...H, "Content-Type": "application/json" },
+        headers: { ...H, "Content-Type": "application/json", "Prefer": "return=representation" },
         body: JSON.stringify({ upvotes: current + 1 })
       });
-      return pRes.ok;
+      const data = await pRes.json();
+      return pRes.ok && data && data.length > 0;
     } catch { return false; }
   },
 

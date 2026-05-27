@@ -57,6 +57,14 @@ function saveVote(reportId) {
   } catch {}
 }
 
+function removeVote(reportId) {
+  try {
+    const votes = getVotedReports();
+    votes.delete(reportId);
+    localStorage.setItem("up_votes", JSON.stringify([...votes]));
+  } catch {}
+}
+
 // ── Supabase DB layer ────────────────────────────────────────────────────
 const db = {
   async getMlas() {
@@ -150,16 +158,17 @@ const db = {
       return data.map(u => u.user_id);
     } catch { return []; }
   },
-  async upvoteReport(id) {
+  async upvoteReport(id, increment = 1) {
     try {
       const res = await fetch(`${SUPA_URL}/rest/v1/reports?id=eq.${id}&select=upvotes`, { headers: H });
       if (!res.ok) return false;
       const rows = await res.json();
       const current = rows[0]?.upvotes || 0;
+      const newValue = Math.max(0, current + increment);
       const pRes = await fetch(`${SUPA_URL}/rest/v1/reports?id=eq.${id}`, {
         method: "PATCH",
         headers: { ...H, "Content-Type": "application/json", "Prefer": "return=representation" },
-        body: JSON.stringify({ upvotes: current + 1 })
+        body: JSON.stringify({ upvotes: newValue })
       });
       const data = await pRes.json();
       return pRes.ok && data && data.length > 0;
@@ -566,13 +575,13 @@ function ReportCard({ r, expanded, onClick, onUpvote, voted }) {
               <Badge party={r.mp_party} />
             </div>
           </div>
-          <button
-            className={`upvote-btn ${voted ? "voted" : ""}`}
+          <button 
+            className={`upvote-btn ${voted ? "voted" : ""}`} 
             onClick={e => { e.stopPropagation(); onUpvote && onUpvote(r.id); }}
-            title={voted ? "You've already flagged this" : "I see this issue too"}
+            title={voted ? "Click to remove flag" : "I see this issue too"}
           >
             <span className="eye">👀</span>
-            {voted ? "Flagged" : "I see this too"} · {r.upvotes || 0}
+            {voted ? "Flagged (Remove)" : "I see this too"} · {r.upvotes || 0}
           </button>
         </div>
       </div>
@@ -1208,13 +1217,25 @@ export default function UrbanPatch() {
   };
 
   const handleUpvote = async (reportId) => {
-    if (votedReports.has(reportId)) return;
-    const ok = await db.upvoteReport(reportId);
+    const isRemoving = votedReports.has(reportId);
+    const increment = isRemoving ? -1 : 1;
+    const ok = await db.upvoteReport(reportId, increment);
+    
     if (ok) {
-      saveVote(reportId);
-      setVotedReports(prev => new Set([...prev, reportId]));
-      setReports(prev => prev.map(r => r.id === reportId ? { ...r, upvotes: (r.upvotes || 0) + 1 } : r));
-      if (selReport?.id === reportId) setSelReport(prev => ({ ...prev, upvotes: (prev.upvotes || 0) + 1 }));
+      setVotedReports(prev => {
+        const next = new Set(prev);
+        if (isRemoving) {
+          next.delete(reportId);
+          removeVote(reportId);
+        } else {
+          next.add(reportId);
+          saveVote(reportId);
+        }
+        return next;
+      });
+      
+      setReports(prev => prev.map(r => r.id === reportId ? { ...r, upvotes: Math.max(0, (r.upvotes || 0) + increment) } : r));
+      if (selReport?.id === reportId) setSelReport(prev => ({ ...prev, upvotes: Math.max(0, (prev.upvotes || 0) + increment) }));
     }
   };
 
@@ -1778,7 +1799,7 @@ export default function UrbanPatch() {
                     style={{ fontSize: 14 }}
                   >
                     <span className="eye">👀</span>
-                    {votedReports.has(selReport.id) ? "You flagged this" : "I see this too"} · {selReport.upvotes || 0}
+                    {votedReports.has(selReport.id) ? "Flagged (Remove)" : "I see this too"} · {selReport.upvotes || 0}
                   </button>
                   {(selReport.upvotes || 0) >= 10 && <span className="priority-badge">🔥 HIGH PRIORITY</span>}
                 </div>

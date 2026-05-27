@@ -1,0 +1,79 @@
+%%{init: {'theme': 'default', 'themeCSS': 'svg { background-color: white !important; }', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#000000', 'primaryBorderColor': '#000000', 'lineColor': '#000000', 'tertiaryColor': '#f4f4f4', 'tertiaryTextColor': '#000000'}}}%%
+flowchart LR
+    %% Entities
+    R[REPORTS]
+    M[COMMUNITY_MESSAGES]
+    B[BANNED_USERS]
+    S[STORAGE_BUCKETS]
+
+    %% Relationships
+    B ---|1| rel1{Submits / Blocks} ---|N| R
+    B ---|1| rel2{Posts / Blocks} ---|N| M
+    R ---|1| rel3{Stores Image In} ---|0..1| S
+
+    %% Attributes for BANNED_USERS
+    b1([_user_id_])
+    b2([alias])
+    b3([created_at])
+    B --- b1
+    B --- b2
+    B --- b3
+
+    %% Attributes for COMMUNITY_MESSAGES
+    m1([_id_])
+    m2([created_at])
+    m3([content])
+    m4([author_alias])
+    m5([author_id])
+    M --- m1
+    M --- m2
+    M --- m3
+    M --- m4
+    M --- m5
+
+    %% Attributes for STORAGE_BUCKETS
+    s1([bucket_name])
+    s2([file_path])
+    S --- s1
+    S --- s2
+
+    %% Attributes for REPORTS
+    r1([_id_])
+    r2([created_at])
+    r3([district])
+    r4([constituency])
+    r5([lok_sabha_seat])
+    r6([area])
+    r7([landmark])
+    r8([waste_type])
+    r9([description])
+    r10([lat])
+    r11([lng])
+    r12([photo_url])
+    r13([status])
+    r14([reporter_id])
+    r15([reporter_alias])
+
+    R --- r1
+    R --- r2
+    R --- r3
+    R --- r4
+    R --- r5
+    R --- r6
+    R --- r7
+    R --- r8
+    R --- r9
+    R --- r10
+    R --- r11
+    R --- r12
+    R --- r13
+    R --- r14
+    R --- r15
+
+    classDef entity fill:#ffffff,stroke:#000000,stroke-width:2px,color:#000000;
+    classDef attribute fill:#f9f9f9,stroke:#000000,stroke-width:1px,color:#000000;
+    classDef relationship fill:#e6e6e6,stroke:#000000,stroke-width:2px,color:#000000;
+
+    class R,M,B,S entity;
+    class rel1,rel2,rel3 relationship;
+    class b1,b2,b3,m1,m2,m3,m4,m5,s1,s2,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15 attribute;

@@ -113,20 +113,22 @@ const db = {
     try {
       const res = await fetch(`${SUPA_URL}/rest/v1/reports?id=eq.${id}`, {
         method: "PATCH",
-        headers: { ...H, "Content-Type": "application/json" },
+        headers: { ...H, "Content-Type": "application/json", "Prefer": "return=representation" },
         body: JSON.stringify({ status })
       });
-      return res.ok;
+      const data = await res.json();
+      return res.ok && data && data.length > 0;
     } catch { return false; }
   },
   async updateReportDetails(id, updates) {
     try {
       const res = await fetch(`${SUPA_URL}/rest/v1/reports?id=eq.${id}`, {
         method: "PATCH",
-        headers: { ...H, "Content-Type": "application/json" },
+        headers: { ...H, "Content-Type": "application/json", "Prefer": "return=representation" },
         body: JSON.stringify(updates)
       });
-      return res.ok;
+      const data = await res.json();
+      return res.ok && data && data.length > 0;
     } catch { return false; }
   },
   async banUser(userId, alias) {

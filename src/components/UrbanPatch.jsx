@@ -1219,23 +1219,30 @@ export default function UrbanPatch() {
   const handleUpvote = async (reportId) => {
     const isRemoving = votedReports.has(reportId);
     const increment = isRemoving ? -1 : 1;
+    
+    // Optimistic UI update
+    setVotedReports(prev => {
+      const next = new Set(prev);
+      if (isRemoving) { next.delete(reportId); removeVote(reportId); } 
+      else { next.add(reportId); saveVote(reportId); }
+      return next;
+    });
+    setReports(prev => prev.map(r => r.id === reportId ? { ...r, upvotes: Math.max(0, (r.upvotes || 0) + increment) } : r));
+    if (selReport?.id === reportId) setSelReport(prev => ({ ...prev, upvotes: Math.max(0, (prev.upvotes || 0) + increment) }));
+
     const ok = await db.upvoteReport(reportId, increment);
     
-    if (ok) {
+    if (!ok) {
+      // Revert on failure
       setVotedReports(prev => {
         const next = new Set(prev);
-        if (isRemoving) {
-          next.delete(reportId);
-          removeVote(reportId);
-        } else {
-          next.add(reportId);
-          saveVote(reportId);
-        }
+        if (isRemoving) { next.add(reportId); saveVote(reportId); } 
+        else { next.delete(reportId); removeVote(reportId); }
         return next;
       });
-      
-      setReports(prev => prev.map(r => r.id === reportId ? { ...r, upvotes: Math.max(0, (r.upvotes || 0) + increment) } : r));
-      if (selReport?.id === reportId) setSelReport(prev => ({ ...prev, upvotes: Math.max(0, (prev.upvotes || 0) + increment) }));
+      setReports(prev => prev.map(r => r.id === reportId ? { ...r, upvotes: Math.max(0, (r.upvotes || 0) - increment) } : r));
+      if (selReport?.id === reportId) setSelReport(prev => ({ ...prev, upvotes: Math.max(0, (prev.upvotes || 0) - increment) }));
+      alert("Failed to update flag. Please try again.");
     }
   };
 

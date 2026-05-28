@@ -204,14 +204,14 @@ const db = {
   },
   async uploadPhoto(file) {
     try {
-      const mimeToExt = { "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "jpg", "image/heif": "jpg" };
-      const ext  = mimeToExt[file.type?.toLowerCase()] || (file.name?.includes(".") ? file.name.split(".").pop().toLowerCase() : "jpg");
-      const mime = file.type || "image/jpeg";
+      const compressedBlob = await db.compressImage(file);
+      const ext = "webp";
+      const mime = "image/webp";
       const path = `reports/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
       const res = await fetch(`${SUPA_URL}/storage/v1/object/garbage-photos/${path}`, {
         method: "POST",
         headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": mime, "cache-control": "3600", "x-upsert": "true" },
-        body: file,
+        body: compressedBlob,
       });
       if (!res.ok) { console.error("Photo upload failed:", res.status, await res.text()); return null; }
       return `${SUPA_URL}/storage/v1/object/public/garbage-photos/${path}`;

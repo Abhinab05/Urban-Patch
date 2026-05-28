@@ -1940,6 +1940,17 @@ export default function UrbanPatch() {
             <span>📈</span>
             <span>Analytics</span>
           </button>
+          {!isAdmin ? (
+            <button className="bottom-nav-item" onClick={() => setShowPinModal(true)}>
+              <span>🔐</span>
+              <span>Admin</span>
+            </button>
+          ) : (
+            <button className="bottom-nav-item active" style={{ color: "var(--danger)" }} onClick={() => setIsAdmin(false)}>
+              <span>🚪</span>
+              <span>Exit</span>
+            </button>
+          )}
         </div>
       </div>
     </div>
